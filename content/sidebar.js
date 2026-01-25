@@ -322,20 +322,26 @@ class ChatGPTNavigator {
         return;
       }
 
-      // Apply display limit if enabled
+      // Apply display limit if enabled (show most recent questions)
       let questionsToShow = this.outlineData;
+      let startIndex = 0;
       if (this.settings.displayMode === 'limited') {
         const maxQuestions = this.settings.maxQuestions || 10;
-        questionsToShow = this.outlineData.slice(0, maxQuestions);
+        // Show the most recent questions (last N items)
+        startIndex = Math.max(0, this.outlineData.length - maxQuestions);
+        questionsToShow = this.outlineData.slice(startIndex);
       }
 
-      questionsToShow.forEach((question, qIndex) => {
+      questionsToShow.forEach((question, relativeIndex) => {
         try {
+          // Calculate original index in outlineData
+          const originalIndex = startIndex + relativeIndex;
+          
           if (this.settings.combineQuestionResponse) {
             // Combined mode: single clickable item for question + response
             const combinedItem = document.createElement('li');
             combinedItem.className = 'outline-item outline-item-question';
-            combinedItem.dataset.index = qIndex;
+            combinedItem.dataset.index = originalIndex;
             combinedItem.dataset.type = 'combined';
 
             const questionText = document.createElement('span');
@@ -366,7 +372,7 @@ class ChatGPTNavigator {
             // Question item
             const questionItem = document.createElement('li');
             questionItem.className = 'outline-item outline-item-question';
-            questionItem.dataset.index = qIndex;
+            questionItem.dataset.index = originalIndex;
             questionItem.dataset.type = 'question';
 
             const questionText = document.createElement('span');
@@ -390,7 +396,7 @@ class ChatGPTNavigator {
               try {
                 const responseItem = document.createElement('li');
                 responseItem.className = 'outline-item outline-item-response';
-                responseItem.dataset.index = `${qIndex}-${rIndex}`;
+                responseItem.dataset.index = `${originalIndex}-${rIndex}`;
                 responseItem.dataset.type = 'response';
 
                 const responseText = document.createElement('span');

@@ -22,8 +22,9 @@ body {
 }
 
 .header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  color: #202123;
   padding: 48px 32px;
   text-align: center;
 }
@@ -48,14 +49,10 @@ body {
 .option-section {
   background-color: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
+  border-radius: 0;
   padding: 32px;
-  margin-bottom: 24px;
-  transition: box-shadow 0.2s ease;
-}
-
-.option-section:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin-bottom: 0;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .option-header {
@@ -118,7 +115,6 @@ body {
   top: 2px;
   left: 2px;
   transition: transform 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-input:checked + .toggle-slider {
@@ -143,12 +139,7 @@ body {
   user-select: none;
   margin-bottom: 12px;
   padding: 12px;
-  border-radius: 8px;
-  transition: background-color 0.2s ease;
-}
-
-.radio-label:hover {
-  background-color: #f9fafb;
+  border-radius: 0;
 }
 
 .radio-input {
@@ -205,16 +196,15 @@ body {
   width: 80px;
   padding: 8px 12px;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 15px;
   color: #202123;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease;
 }
 
 .number-input:focus {
   outline: none;
   border-color: #10a37f;
-  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
 }
 
 /* Buttons */
@@ -228,44 +218,39 @@ body {
 
 .button {
   padding: 12px 24px;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 0;
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
   font-family: inherit;
 }
 
 .button-primary {
   background-color: #10a37f;
   color: white;
+  border-color: #10a37f;
 }
 
 .button-primary:hover {
   background-color: #0d8f6e;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);
-}
-
-.button-primary:active {
-  transform: translateY(0);
 }
 
 .button-secondary {
-  background-color: #f3f4f6;
+  background-color: #ffffff;
   color: #202123;
 }
 
 .button-secondary:hover {
-  background-color: #e5e7eb;
+  background-color: #f9fafb;
 }
 
 .status-message {
   margin-left: auto;
   font-size: 14px;
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: 0;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
