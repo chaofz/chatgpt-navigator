@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT Navigator",
+  "version": "1.0.0",
+  "description": "Adds a navigation sidebar to ChatGPT conversations for quick access to questions and responses",
+  "permissions": [
+    "activeTab"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "content/sidebar.js",
+        "content/content.js"
+      ],
+      "css": [
+        "content/sidebar.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
