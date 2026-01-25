@@ -4,8 +4,13 @@
   "version": "1.0.0",
   "description": "Adds a navigation sidebar to ChatGPT conversations for quick access to questions and responses",
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "content_scripts": [
     {
       "matches": [

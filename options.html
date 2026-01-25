@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatGPT Navigator - Options</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>ChatGPT Navigator Settings</h1>
+      <p class="subtitle">Customize your navigation sidebar experience</p>
+    </header>
+
+    <main class="main-content">
+      <section class="option-section">
+        <div class="option-header">
+          <h2>Click Behavior</h2>
+          <p class="option-description">Choose how clicking on outline items works</p>
+        </div>
+        <div class="option-control">
+          <label class="toggle-label">
+            <input type="checkbox" id="combineQuestionResponse" class="toggle-input">
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">Combine question and response as one clickable item</span>
+          </label>
+          <p class="option-hint">When enabled, questions and responses are combined. Clicking goes to the question.</p>
+        </div>
+      </section>
+
+      <section class="option-section">
+        <div class="option-header">
+          <h2>Display Limit</h2>
+          <p class="option-description">Control how many questions are shown in the outline</p>
+        </div>
+        <div class="option-control">
+          <label class="radio-label">
+            <input type="radio" name="displayMode" value="all" id="displayAll" class="radio-input" checked>
+            <span class="radio-custom"></span>
+            <span class="radio-text">Show all questions</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="displayMode" value="limited" id="displayLimited" class="radio-input">
+            <span class="radio-custom"></span>
+            <span class="radio-text">Limit number of questions</span>
+          </label>
+        </div>
+        <div class="option-control" id="limitControl" style="display: none;">
+          <label class="number-label">
+            <span class="number-label-text">Maximum questions to show:</span>
+            <input type="number" id="maxQuestions" min="1" max="50" value="10" class="number-input">
+          </label>
+          <p class="option-hint">The outline will be scrollable if there are more questions than this limit.</p>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button id="saveButton" class="button button-primary">Save Settings</button>
+        <button id="resetButton" class="button button-secondary">Reset to Defaults</button>
+        <div id="statusMessage" class="status-message"></div>
+      </div>
+    </main>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

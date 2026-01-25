@@ -40,9 +40,13 @@
     // Initialize navigator
     try {
       navigatorInstance = new ChatGPTNavigator();
-      navigatorInstance.init();
-      window.chatgptNavigator = navigatorInstance;
-      console.log('[ChatGPT Navigator] Extension loaded successfully');
+      navigatorInstance.init().then(() => {
+        window.chatgptNavigator = navigatorInstance;
+        console.log('[ChatGPT Navigator] Extension loaded successfully');
+      }).catch((error) => {
+        console.error('[ChatGPT Navigator] Error initializing', error);
+        console.error('[ChatGPT Navigator] Stack trace:', error.stack);
+      });
     } catch (error) {
       console.error('[ChatGPT Navigator] Error initializing', error);
       console.error('[ChatGPT Navigator] Stack trace:', error.stack);

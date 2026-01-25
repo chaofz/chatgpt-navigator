@@ -115,6 +115,13 @@
   white-space: nowrap;
 }
 
+#chatgpt-navigator-outline .outline-item-response-preview {
+  font-weight: 400;
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
 /* Toggle button */
 #chatgpt-navigator-toggle-btn {
   position: relative;

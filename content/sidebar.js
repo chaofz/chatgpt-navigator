@@ -14,6 +14,11 @@ class ChatGPTNavigator {
     this.updateDebounceTimer = null;
     this.observer = null;
     this.logPrefix = '[ChatGPT Navigator]';
+    this.settings = {
+      combineQuestionResponse: false,
+      displayMode: 'all',
+      maxQuestions: 10
+    };
   }
 
   /**
@@ -41,18 +46,54 @@ class ChatGPTNavigator {
   }
 
   /**
+   * Load settings from storage
+   */
+  async loadSettings() {
+    try {
+      const result = await chrome.storage.sync.get({
+        combineQuestionResponse: false,
+        displayMode: 'all',
+        maxQuestions: 10
+      });
+      this.settings = result;
+      this.logInfo('Settings loaded:', this.settings);
+    } catch (error) {
+      this.logError('Error loading settings', error);
+    }
+  }
+
+  /**
    * Initialize the sidebar
    */
-  init() {
+  async init() {
     try {
       this.logInfo('Initializing ChatGPT Navigator...');
+      await this.loadSettings();
       this.createSidebar();
       this.generateOutline();
       this.attachEventListeners();
       this.observeChanges();
+      this.setupMessageListener();
       this.logInfo('ChatGPT Navigator initialized successfully');
     } catch (error) {
       this.logError('Failed to initialize', error);
+    }
+  }
+
+  /**
+   * Setup message listener for settings reload
+   */
+  setupMessageListener() {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.action === 'reloadSettings') {
+          this.loadSettings().then(() => {
+            this.generateOutline();
+            sendResponse({ success: true });
+          });
+          return true; // Keep channel open for async response
+        }
+      });
     }
   }
 
@@ -68,7 +109,7 @@ class ChatGPTNavigator {
 
     this.sidebar = document.createElement('div');
     this.sidebar.id = 'chatgpt-navigator-sidebar';
-    
+
     this.sidebar.innerHTML = `
       <div id="chatgpt-navigator-header">
         <button id="chatgpt-navigator-toggle-btn" aria-label="Toggle sidebar">
@@ -92,7 +133,7 @@ class ChatGPTNavigator {
   generateOutline() {
     try {
       this.outlineData = [];
-      
+
       // Try multiple selectors to find messages (ChatGPT may change structure)
       const messageSelectors = [
         '[data-message-author-role]',
@@ -101,7 +142,7 @@ class ChatGPTNavigator {
       ];
 
       let messages = [];
-      
+
       for (const selector of messageSelectors) {
         try {
           messages = Array.from(document.querySelectorAll(selector));
@@ -143,7 +184,7 @@ class ChatGPTNavigator {
         try {
           const role = this.getMessageRole(messageEl);
           const text = this.extractMessageText(messageEl);
-          
+
           if (!text || text.trim().length === 0) continue;
 
           if (role === 'user') {
@@ -281,57 +322,97 @@ class ChatGPTNavigator {
         return;
       }
 
-      this.outlineData.forEach((question, qIndex) => {
+      // Apply display limit if enabled
+      let questionsToShow = this.outlineData;
+      if (this.settings.displayMode === 'limited') {
+        const maxQuestions = this.settings.maxQuestions || 10;
+        questionsToShow = this.outlineData.slice(0, maxQuestions);
+      }
+
+      questionsToShow.forEach((question, qIndex) => {
         try {
-          // Question item
-          const questionItem = document.createElement('li');
-          questionItem.className = 'outline-item outline-item-question';
-          questionItem.dataset.index = qIndex;
-          questionItem.dataset.type = 'question';
-          
-          const questionText = document.createElement('span');
-          questionText.className = 'outline-item-text';
-          questionText.textContent = question.text;
-          questionItem.appendChild(questionText);
+          if (this.settings.combineQuestionResponse) {
+            // Combined mode: single clickable item for question + response
+            const combinedItem = document.createElement('li');
+            combinedItem.className = 'outline-item outline-item-question';
+            combinedItem.dataset.index = qIndex;
+            combinedItem.dataset.type = 'combined';
 
-          questionItem.addEventListener('click', (e) => {
-            e.stopPropagation();
-            try {
-              this.scrollToElement(question.element, questionItem);
-            } catch (err) {
-              this.logError('Error scrolling to question', err);
+            const questionText = document.createElement('span');
+            questionText.className = 'outline-item-text';
+            questionText.textContent = question.text;
+            combinedItem.appendChild(questionText);
+
+            // Add response preview if available
+            if (question.responses.length > 0) {
+              const responsePreview = document.createElement('span');
+              responsePreview.className = 'outline-item-text outline-item-response-preview';
+              responsePreview.textContent = question.responses[0].text;
+              combinedItem.appendChild(responsePreview);
             }
-          });
 
-          this.outline.appendChild(questionItem);
+            combinedItem.addEventListener('click', (e) => {
+              e.stopPropagation();
+              try {
+                this.scrollToElement(question.element, combinedItem);
+              } catch (err) {
+                this.logError('Error scrolling to question', err);
+              }
+            });
 
-          // Response items
-          question.responses.forEach((response, rIndex) => {
-            try {
-              const responseItem = document.createElement('li');
-              responseItem.className = 'outline-item outline-item-response';
-              responseItem.dataset.index = `${qIndex}-${rIndex}`;
-              responseItem.dataset.type = 'response';
-              
-              const responseText = document.createElement('span');
-              responseText.className = 'outline-item-text';
-              responseText.textContent = response.text;
-              responseItem.appendChild(responseText);
+            this.outline.appendChild(combinedItem);
+          } else {
+            // Separate mode: question and responses as separate items
+            // Question item
+            const questionItem = document.createElement('li');
+            questionItem.className = 'outline-item outline-item-question';
+            questionItem.dataset.index = qIndex;
+            questionItem.dataset.type = 'question';
 
-              responseItem.addEventListener('click', (e) => {
-                e.stopPropagation();
-                try {
-                  this.scrollToElement(response.element, responseItem);
-                } catch (err) {
-                  this.logError('Error scrolling to response', err);
-                }
-              });
+            const questionText = document.createElement('span');
+            questionText.className = 'outline-item-text';
+            questionText.textContent = question.text;
+            questionItem.appendChild(questionText);
 
-              this.outline.appendChild(responseItem);
-            } catch (err) {
-              this.logError(`Error rendering response ${rIndex}`, err);
-            }
-          });
+            questionItem.addEventListener('click', (e) => {
+              e.stopPropagation();
+              try {
+                this.scrollToElement(question.element, questionItem);
+              } catch (err) {
+                this.logError('Error scrolling to question', err);
+              }
+            });
+
+            this.outline.appendChild(questionItem);
+
+            // Response items
+            question.responses.forEach((response, rIndex) => {
+              try {
+                const responseItem = document.createElement('li');
+                responseItem.className = 'outline-item outline-item-response';
+                responseItem.dataset.index = `${qIndex}-${rIndex}`;
+                responseItem.dataset.type = 'response';
+
+                const responseText = document.createElement('span');
+                responseText.className = 'outline-item-text';
+                responseText.textContent = response.text;
+                responseItem.appendChild(responseText);
+
+                responseItem.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  try {
+                    this.scrollToElement(response.element, responseItem);
+                  } catch (err) {
+                    this.logError('Error scrolling to response', err);
+                  }
+                });
+
+                this.outline.appendChild(responseItem);
+              } catch (err) {
+                this.logError(`Error rendering response ${rIndex}`, err);
+              }
+            });
+          }
         } catch (err) {
           this.logError(`Error rendering question ${qIndex}`, err);
         }
@@ -388,7 +469,7 @@ class ChatGPTNavigator {
    */
   toggleExpand() {
     this.isExpanded = !this.isExpanded;
-    
+
     if (this.sidebar) {
       if (this.isExpanded) {
         this.sidebar.classList.remove('collapsed');
@@ -420,10 +501,10 @@ class ChatGPTNavigator {
       });
 
       // Observe the main content area
-      const mainContent = document.querySelector('main') || 
-                         document.querySelector('[role="main"]') ||
-                         document.body;
-      
+      const mainContent = document.querySelector('main') ||
+        document.querySelector('[role="main"]') ||
+        document.body;
+
       if (mainContent) {
         this.observer.observe(mainContent, {
           childList: true,
