@@ -15,7 +15,7 @@ class ChatGPTNavigator {
     this.observer = null;
     this.logPrefix = '[ChatGPT Navigator]';
     this.settings = {
-      combineQuestionResponse: false,
+      combineQuestionResponse: true,
       displayMode: 'all',
       maxQuestions: 10
     };
@@ -51,7 +51,7 @@ class ChatGPTNavigator {
   async loadSettings() {
     try {
       const result = await chrome.storage.sync.get({
-        combineQuestionResponse: false,
+        combineQuestionResponse: true,
         displayMode: 'all',
         maxQuestions: 10
       });
@@ -109,6 +109,8 @@ class ChatGPTNavigator {
 
     this.sidebar = document.createElement('div');
     this.sidebar.id = 'chatgpt-navigator-sidebar';
+    // Initially hide the sidebar until first Q&A pair is ready
+    this.sidebar.classList.add('hidden');
 
     this.sidebar.innerHTML = `
       <div id="chatgpt-navigator-header">
@@ -213,10 +215,35 @@ class ChatGPTNavigator {
 
       this.logInfo(`Generated outline: ${questionCount} questions, ${responseCount} responses`);
       this.renderOutline();
+      
+      // Show sidebar only when we have at least one question with at least one response
+      this.checkAndShowSidebar();
     } catch (error) {
       this.logError('Failed to generate outline', error);
       // Still try to render empty outline
       this.renderOutline();
+      this.checkAndShowSidebar();
+    }
+  }
+
+  /**
+   * Check if sidebar should be shown (has first Q&A pair) and show it
+   */
+  checkAndShowSidebar() {
+    if (!this.sidebar) return;
+    
+    // Check if we have at least one question with at least one response
+    const hasFirstQAPair = this.outlineData.length > 0 && 
+                          this.outlineData[0] && 
+                          this.outlineData[0].responses && 
+                          this.outlineData[0].responses.length > 0;
+    
+    if (hasFirstQAPair && this.sidebar.classList.contains('hidden')) {
+      this.sidebar.classList.remove('hidden');
+      this.logInfo('First Q&A pair detected, showing sidebar');
+    } else if (!hasFirstQAPair && !this.sidebar.classList.contains('hidden')) {
+      // Hide again if we lost the first Q&A pair (e.g., on new chat)
+      this.sidebar.classList.add('hidden');
     }
   }
 
