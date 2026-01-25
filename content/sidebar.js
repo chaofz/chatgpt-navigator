@@ -7,6 +7,8 @@ class ChatGPTNavigator {
   constructor() {
     this.sidebar = null;
     this.outline = null;
+    this.toggleButton = null;
+    this.isExpanded = true;
     this.outlineData = [];
     this.activeItem = null;
     this.updateDebounceTimer = null;
@@ -68,11 +70,19 @@ class ChatGPTNavigator {
     this.sidebar.id = 'chatgpt-navigator-sidebar';
     
     this.sidebar.innerHTML = `
+      <div id="chatgpt-navigator-header">
+        <button id="chatgpt-navigator-toggle-btn" aria-label="Toggle sidebar">
+          <svg id="chatgpt-navigator-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+      </div>
       <ul id="chatgpt-navigator-outline"></ul>
     `;
 
     document.body.appendChild(this.sidebar);
     this.outline = document.getElementById('chatgpt-navigator-outline');
+    this.toggleButton = document.getElementById('chatgpt-navigator-toggle-btn');
   }
 
 
@@ -367,7 +377,25 @@ class ChatGPTNavigator {
    * Attach event listeners
    */
   attachEventListeners() {
-    // No toggle buttons needed
+    // Toggle button for expand/collapse
+    if (this.toggleButton) {
+      this.toggleButton.addEventListener('click', () => this.toggleExpand());
+    }
+  }
+
+  /**
+   * Toggle sidebar expand/collapse
+   */
+  toggleExpand() {
+    this.isExpanded = !this.isExpanded;
+    
+    if (this.sidebar) {
+      if (this.isExpanded) {
+        this.sidebar.classList.remove('collapsed');
+      } else {
+        this.sidebar.classList.add('collapsed');
+      }
+    }
   }
 
   /**
