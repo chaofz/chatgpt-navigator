@@ -2,7 +2,7 @@
 
 #chatgpt-navigator-sidebar {
   position: fixed;
-  top: 50%;
+  top: calc(50% - 25px);
   right: 70px;
   transform: translateY(-50%);
   width: 200px;
@@ -94,7 +94,7 @@
 }
 
 #chatgpt-navigator-outline .outline-item {
-  padding: 6px 12px;
+  padding: 4px 12px;
   cursor: pointer;
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -120,7 +120,7 @@
   font-weight: 400;
   color: #6b7280;
   font-size: 12px;
-  padding-left: 20px;
+  padding-left: 12px;
   line-height: 1.5;
 }
 
@@ -172,4 +172,14 @@
 
 #chatgpt-navigator-sidebar.collapsed #chatgpt-navigator-toggle-icon {
   transform: rotate(180deg);
+}
+
+/* Hide sidebar when viewport is about half of full screen or narrower */
+@media (max-width: 1200px) {
+  #chatgpt-navigator-sidebar {
+    transform: translate(calc(100% - 46px), -50%);
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+  }
 }

@@ -15,7 +15,7 @@ class ChatGPTNavigator {
     this.observer = null;
     this.logPrefix = '[ChatGPT Navigator]';
     this.settings = {
-      combineQuestionResponse: true,
+      combineQuestionResponse: false,
       displayMode: 'all',
       maxQuestions: 10
     };
@@ -49,16 +49,28 @@ class ChatGPTNavigator {
    * Load settings from storage
    */
   async loadSettings() {
+    const defaults = {
+      combineQuestionResponse: false,
+      displayMode: 'all',
+      maxQuestions: 10
+    };
     try {
-      const result = await chrome.storage.sync.get({
-        combineQuestionResponse: true,
-        displayMode: 'all',
-        maxQuestions: 10
-      });
+      if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+        this.settings = { ...defaults };
+        return;
+      }
+      const result = await chrome.storage.sync.get(defaults);
       this.settings = result;
       this.logInfo('Settings loaded:', this.settings);
     } catch (error) {
-      this.logError('Error loading settings', error);
+      const invalidated = error?.message?.includes('Extension context invalidated');
+      if (invalidated) {
+        this.settings = { ...defaults };
+        this.logInfo('Using default settings (extension context invalidated)');
+      } else {
+        this.logError('Error loading settings', error);
+        this.settings = { ...defaults };
+      }
     }
   }
 
@@ -84,7 +96,7 @@ class ChatGPTNavigator {
    * Setup message listener for settings reload
    */
   setupMessageListener() {
-    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    if (typeof chrome !== 'undefined' && chrome.runtime?.id && chrome.runtime.onMessage) {
       chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'reloadSettings') {
           this.loadSettings().then(() => {
@@ -215,7 +227,7 @@ class ChatGPTNavigator {
 
       this.logInfo(`Generated outline: ${questionCount} questions, ${responseCount} responses`);
       this.renderOutline();
-      
+
       // Show sidebar only when we have at least one question with at least one response
       this.checkAndShowSidebar();
     } catch (error) {
@@ -231,13 +243,13 @@ class ChatGPTNavigator {
    */
   checkAndShowSidebar() {
     if (!this.sidebar) return;
-    
+
     // Check if we have at least one question with at least one response
-    const hasFirstQAPair = this.outlineData.length > 0 && 
-                          this.outlineData[0] && 
-                          this.outlineData[0].responses && 
-                          this.outlineData[0].responses.length > 0;
-    
+    const hasFirstQAPair = this.outlineData.length > 0 &&
+      this.outlineData[0] &&
+      this.outlineData[0].responses &&
+      this.outlineData[0].responses.length > 0;
+
     if (hasFirstQAPair && this.sidebar.classList.contains('hidden')) {
       this.sidebar.classList.remove('hidden');
       this.logInfo('First Q&A pair detected, showing sidebar');
@@ -363,7 +375,7 @@ class ChatGPTNavigator {
         try {
           // Calculate original index in outlineData
           const originalIndex = startIndex + relativeIndex;
-          
+
           if (this.settings.combineQuestionResponse) {
             // Combined mode: single clickable item for question + response
             const combinedItem = document.createElement('li');
@@ -456,34 +468,65 @@ class ChatGPTNavigator {
   }
 
   /**
-   * Scroll to target element
+   * Scroll to target element (fast 250ms smooth scroll)
    */
   scrollToElement(targetElement, outlineItem) {
     if (!targetElement) return;
 
-    // Remove previous active state
-    if (this.activeItem) {
-      this.activeItem.classList.remove('active');
-    }
-
-    // Add active state to clicked item
+    if (this.activeItem) this.activeItem.classList.remove('active');
     outlineItem.classList.add('active');
     this.activeItem = outlineItem;
 
-    // Scroll to element
-    targetElement.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start',
-      inline: 'nearest'
-    });
+    const duration = 250;
+    const scrollParent = this._getScrollParent(targetElement);
 
-    // Remove active state after scroll completes (faster fade out)
+    const offsetAbove = 30; /* 10px more above than default (20px) */
+
+    if (scrollParent) {
+      const startTop = scrollParent.scrollTop;
+      targetElement.scrollIntoView({ block: 'start', behavior: 'auto' });
+      const endTop = Math.max(0, scrollParent.scrollTop - 25);
+      scrollParent.scrollTop = startTop;
+      const startTime = performance.now();
+      const run = (now) => {
+        const t = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 2);
+        scrollParent.scrollTop = startTop + (endTop - startTop) * eased;
+        if (t < 1) requestAnimationFrame(run);
+      };
+      requestAnimationFrame(run);
+    } else {
+      const startY = window.scrollY;
+      const targetY = targetElement.getBoundingClientRect().top + startY - offsetAbove;
+      const endY = Math.max(0, targetY);
+      const startTime = performance.now();
+      const run = (now) => {
+        const t = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 2);
+        window.scrollTo(0, startY + (endY - startY) * eased);
+        if (t < 1) requestAnimationFrame(run);
+      };
+      requestAnimationFrame(run);
+    }
+
     setTimeout(() => {
       if (this.activeItem === outlineItem) {
         outlineItem.classList.remove('active');
         this.activeItem = null;
       }
-    }, 500);
+    }, duration + 50);
+  }
+
+  _getScrollParent(el) {
+    let parent = el.parentElement;
+    while (parent) {
+      const { overflowY } = getComputedStyle(parent);
+      if (/(auto|scroll|overlay)/.test(overflowY) && parent.scrollHeight > parent.clientHeight) {
+        return parent;
+      }
+      parent = parent.parentElement;
+    }
+    return null;
   }
 
 
