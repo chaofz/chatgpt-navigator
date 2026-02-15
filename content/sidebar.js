@@ -12,6 +12,7 @@ class ChatGPTNavigator {
     this.outlineData = [];
     this.activeItem = null;
     this.updateDebounceTimer = null;
+    this.resizeDebounceTimer = null;
     this.observer = null;
     this.logPrefix = '[ChatGPT Navigator]';
     this.settings = {
@@ -345,6 +346,16 @@ class ChatGPTNavigator {
   }
 
   /**
+   * Get max truncation length based on window width (narrower window = shorter text)
+   * Uses window.innerWidth so resizing the browser actually changes truncation.
+   */
+  getMaxTruncateLength() {
+    const w = window.innerWidth;
+    const charsPerPx = 22; // ~60 chars at 1320px, ~30 at 660px, ~20 at 440px
+    return Math.min(60, Math.max(15, Math.floor(w / charsPerPx)));
+  }
+
+  /**
    * Render outline HTML
    */
   renderOutline() {
@@ -385,14 +396,14 @@ class ChatGPTNavigator {
 
             const questionText = document.createElement('span');
             questionText.className = 'outline-item-text';
-            questionText.textContent = question.text;
+            questionText.textContent = this.truncateText(question.fullText, this.getMaxTruncateLength());
             combinedItem.appendChild(questionText);
 
             // Add response preview if available
             if (question.responses.length > 0) {
               const responsePreview = document.createElement('span');
               responsePreview.className = 'outline-item-text outline-item-response-preview';
-              responsePreview.textContent = question.responses[0].text;
+              responsePreview.textContent = this.truncateText(question.responses[0].fullText, this.getMaxTruncateLength());
               combinedItem.appendChild(responsePreview);
             }
 
@@ -416,7 +427,7 @@ class ChatGPTNavigator {
 
             const questionText = document.createElement('span');
             questionText.className = 'outline-item-text';
-            questionText.textContent = question.text;
+            questionText.textContent = this.truncateText(question.fullText, this.getMaxTruncateLength());
             questionItem.appendChild(questionText);
 
             questionItem.addEventListener('click', (e) => {
@@ -440,7 +451,7 @@ class ChatGPTNavigator {
 
                 const responseText = document.createElement('span');
                 responseText.className = 'outline-item-text';
-                responseText.textContent = response.text;
+                responseText.textContent = this.truncateText(response.fullText, this.getMaxTruncateLength());
                 responseItem.appendChild(responseText);
 
                 responseItem.addEventListener('click', (e) => {
@@ -538,6 +549,15 @@ class ChatGPTNavigator {
     if (this.toggleButton) {
       this.toggleButton.addEventListener('click', () => this.toggleExpand());
     }
+
+    // Re-render outline on resize so truncation adapts to width
+    this._boundResize = () => {
+      clearTimeout(this.resizeDebounceTimer);
+      this.resizeDebounceTimer = setTimeout(() => {
+        if (this.outlineData.length > 0) this.renderOutline();
+      }, 150);
+    };
+    window.addEventListener('resize', this._boundResize);
   }
 
   /**
@@ -552,6 +572,7 @@ class ChatGPTNavigator {
       } else {
         this.sidebar.classList.add('collapsed');
       }
+      if (this.outlineData.length > 0) this.renderOutline();
     }
   }
 
@@ -605,6 +626,12 @@ class ChatGPTNavigator {
     }
     if (this.updateDebounceTimer) {
       clearTimeout(this.updateDebounceTimer);
+    }
+    if (this.resizeDebounceTimer) {
+      clearTimeout(this.resizeDebounceTimer);
+    }
+    if (this._boundResize) {
+      window.removeEventListener('resize', this._boundResize);
     }
     if (this.sidebar) {
       this.sidebar.remove();
