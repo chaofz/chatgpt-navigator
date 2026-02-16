@@ -6,6 +6,7 @@
 (function() {
   'use strict';
 
+  const DEBUG = false;
   let navigatorInstance = null;
   let initTimer = null;
 
@@ -32,7 +33,7 @@
       try {
         navigatorInstance.generateOutline();
       } catch (e) {
-        console.error('[ChatGPT Navigator] Error updating outline', e);
+        if (DEBUG) console.error('[ChatGPT Navigator] Error updating outline', e);
       }
       return;
     }
@@ -42,14 +43,18 @@
       navigatorInstance = new ChatGPTNavigator();
       navigatorInstance.init().then(() => {
         window.chatgptNavigator = navigatorInstance;
-        console.log('[ChatGPT Navigator] Extension loaded successfully');
+        if (DEBUG) console.log('[ChatGPT Navigator] Extension loaded successfully');
       }).catch((error) => {
-        console.error('[ChatGPT Navigator] Error initializing', error);
-        console.error('[ChatGPT Navigator] Stack trace:', error.stack);
+        if (DEBUG) {
+          console.error('[ChatGPT Navigator] Error initializing', error);
+          console.error('[ChatGPT Navigator] Stack trace:', error.stack);
+        }
       });
     } catch (error) {
-      console.error('[ChatGPT Navigator] Error initializing', error);
-      console.error('[ChatGPT Navigator] Stack trace:', error.stack);
+      if (DEBUG) {
+        console.error('[ChatGPT Navigator] Error initializing', error);
+        console.error('[ChatGPT Navigator] Stack trace:', error.stack);
+      }
     }
   }
 
@@ -76,7 +81,7 @@
         try {
           navigatorInstance.destroy();
         } catch (e) {
-          console.warn('[ChatGPT Navigator] Error during cleanup:', e);
+          if (DEBUG) console.warn('[ChatGPT Navigator] Error during cleanup:', e);
         }
         navigatorInstance = null;
         window.chatgptNavigator = null;

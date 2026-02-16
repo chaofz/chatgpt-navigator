@@ -11,7 +11,9 @@ class ChatGPTNavigator {
     this.isExpanded = true;
     this.outlineData = [];
     this.activeItem = null;
+    this.debug = false;
     this.updateDebounceTimer = null;
+    this.updateDebounceTimerFast = null;
     this.resizeDebounceTimer = null;
     this.observer = null;
     this.logPrefix = '[ChatGPT Navigator]';
@@ -23,9 +25,10 @@ class ChatGPTNavigator {
   }
 
   /**
-   * Log error with consistent prefix
+   * Log error with consistent prefix (no-op when debug disabled)
    */
   logError(message, error = null) {
+    if (!this.debug) return;
     console.error(`${this.logPrefix} ${message}`, error || '');
     if (error && error.stack) {
       console.error(`${this.logPrefix} Stack trace:`, error.stack);
@@ -33,16 +36,18 @@ class ChatGPTNavigator {
   }
 
   /**
-   * Log warning with consistent prefix
+   * Log warning with consistent prefix (no-op when debug disabled)
    */
   logWarning(message) {
+    if (!this.debug) return;
     console.warn(`${this.logPrefix} ${message}`);
   }
 
   /**
-   * Log info with consistent prefix
+   * Log info with consistent prefix (no-op when debug disabled)
    */
   logInfo(message) {
+    if (!this.debug) return;
     console.log(`${this.logPrefix} ${message}`);
   }
 
@@ -586,15 +591,21 @@ class ChatGPTNavigator {
       }
 
       this.observer = new MutationObserver(() => {
-        // Debounce updates
-        clearTimeout(this.updateDebounceTimer);
-        this.updateDebounceTimer = setTimeout(() => {
+        const runUpdate = () => {
           try {
             this.generateOutline();
           } catch (error) {
             this.logError('Error in outline update observer', error);
           }
-        }, 500);
+        };
+        // When nav is still hidden: short debounce (500ms) so we show as soon as content appears
+        if (this.sidebar?.classList.contains('hidden')) {
+          clearTimeout(this.updateDebounceTimerFast);
+          this.updateDebounceTimerFast = setTimeout(runUpdate, 500);
+        }
+        // Always schedule full debounce (500ms) for stable updates; avoids thrashing while streaming when visible
+        clearTimeout(this.updateDebounceTimer);
+        this.updateDebounceTimer = setTimeout(runUpdate, 500);
       });
 
       // Observe the main content area
@@ -626,6 +637,9 @@ class ChatGPTNavigator {
     }
     if (this.updateDebounceTimer) {
       clearTimeout(this.updateDebounceTimer);
+    }
+    if (this.updateDebounceTimerFast) {
+      clearTimeout(this.updateDebounceTimerFast);
     }
     if (this.resizeDebounceTimer) {
       clearTimeout(this.resizeDebounceTimer);
