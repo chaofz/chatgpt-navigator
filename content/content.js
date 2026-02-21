@@ -93,4 +93,43 @@
 
   urlObserver.observe(document, { subtree: true, childList: true });
 
+  // --- Option+V: toggle ChatGPT voice dictate ---
+  function getVoiceDictateButton() {
+    const labels = ['voice', 'microphone', 'mic', 'dictate', 'speech', 'start listening', 'stop listening'];
+    const buttons = document.querySelectorAll('button[aria-label], button[title]');
+    for (const btn of buttons) {
+      const label = (btn.getAttribute('aria-label') || btn.getAttribute('title') || '').toLowerCase();
+      if (labels.some(l => label.includes(l))) return btn;
+    }
+    // Fallback: button that looks like a mic (svg path or role near composer)
+    const composer = document.querySelector('[data-testid="composer-textarea"]')?.closest('form')
+      || document.querySelector('form');
+    if (composer) {
+      const inComposer = composer.querySelectorAll('button');
+      for (const btn of inComposer) {
+        const svg = btn.querySelector('svg');
+        if (svg && (svg.innerHTML.includes('path') || btn.getAttribute('aria-label'))) {
+          const aria = (btn.getAttribute('aria-label') || '').toLowerCase();
+          if (aria.includes('voice') || aria.includes('mic') || aria.includes('listen') || !aria) {
+            if (btn.offsetParent !== null) return btn;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  function onVoiceShortcut(e) {
+    if (e.ctrlKey && (e.key === 'v' || e.key === 'V')) {
+      const btn = getVoiceDictateButton();
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        btn.click();
+      }
+    }
+  }
+
+  document.addEventListener('keydown', onVoiceShortcut, true);
+
 })();

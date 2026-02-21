@@ -501,7 +501,7 @@ class ChatGPTNavigator {
     if (scrollParent) {
       const startTop = scrollParent.scrollTop;
       targetElement.scrollIntoView({ block: 'start', behavior: 'auto' });
-      const endTop = Math.max(0, scrollParent.scrollTop - 25);
+      const endTop = Math.max(0, scrollParent.scrollTop - 37);
       scrollParent.scrollTop = startTop;
       const startTime = performance.now();
       const run = (now) => {
