@@ -130,6 +130,50 @@
     }
   }
 
+  // --- Cmd + Enter: submit prompt ---
+  function getSubmitButton() {
+    // Look for the send/submit button
+    const submitSelectors = [
+      '[data-testid="send-button"]',
+      'button[aria-label*="Send"]',
+      'button[aria-label*="submit"]',
+      'button:has(svg [d*="M15.1,12.1L12.9,14.3"])', // Example path for send icon
+      'form button[type="submit"]',
+      'button.absolute.bottom-1.5.right-2' // Common ChatGPT positioning
+    ];
+
+    for (const selector of submitSelectors) {
+      try {
+        const btn = document.querySelector(selector);
+        if (btn && btn.offsetParent !== null && !btn.disabled) return btn;
+      } catch (e) {}
+    }
+
+    // Fallback: search all buttons for "Send" or "Submit" labels or icons
+    const buttons = document.querySelectorAll('button');
+    for (const btn of buttons) {
+      const label = (btn.getAttribute('aria-label') || btn.getAttribute('title') || '').toLowerCase();
+      if (label.includes('send') || label.includes('submit')) {
+        if (btn.offsetParent !== null && !btn.disabled) return btn;
+      }
+    }
+
+    return null;
+  }
+
+  function onSubmitShortcut(e) {
+    // Cmd + Enter (Mac) or Ctrl + Enter (Windows/Linux)
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      const btn = getSubmitButton();
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        btn.click();
+      }
+    }
+  }
+
   document.addEventListener('keydown', onVoiceShortcut, true);
+  document.addEventListener('keydown', onSubmitShortcut, true);
 
 })();
