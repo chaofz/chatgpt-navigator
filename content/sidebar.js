@@ -563,6 +563,71 @@ class ChatGPTNavigator {
       }, 150);
     };
     window.addEventListener('resize', this._boundResize);
+
+    // Option + Arrow shortcuts for navigation
+    this._boundKeyDown = (e) => this.handleKeyDown(e);
+    document.addEventListener('keydown', this._boundKeyDown, true);
+  }
+
+  /**
+   * Handle keydown events for navigation shortcuts
+   */
+  handleKeyDown(e) {
+    // Option + Arrow Up/Down
+    if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+      if (!this.outlineData || this.outlineData.length === 0) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const direction = e.key === 'ArrowUp' ? -1 : 1;
+      this.navigateOutline(direction);
+    }
+  }
+
+  /**
+   * Navigate to the next/previous item in the outline
+   */
+  navigateOutline(direction) {
+    const items = Array.from(this.outline.querySelectorAll('.outline-item'));
+    if (items.length === 0) return;
+
+    let nextIndex = 0;
+
+    // If there's an active item, find its index and move from there
+    if (this.activeItem) {
+      const currentIndex = items.indexOf(this.activeItem);
+      if (currentIndex !== -1) {
+        nextIndex = currentIndex + direction;
+      }
+    } else if (direction === -1) {
+      // If no active item and going up, start from the last item
+      nextIndex = items.length - 1;
+    }
+
+    // Boundary checks
+    if (nextIndex < 0) nextIndex = 0;
+    if (nextIndex >= items.length) nextIndex = items.length - 1;
+
+    const nextItem = items[nextIndex];
+    if (nextItem) {
+      // Find the corresponding element in the DOM
+      const type = nextItem.dataset.type;
+      const indexStr = nextItem.dataset.index;
+      
+      let targetElement = null;
+      if (type === 'question' || type === 'combined') {
+        const qIndex = parseInt(indexStr);
+        targetElement = this.outlineData[qIndex]?.element;
+      } else if (type === 'response') {
+        const [qIndex, rIndex] = indexStr.split('-').map(Number);
+        targetElement = this.outlineData[qIndex]?.responses[rIndex]?.element;
+      }
+
+      if (targetElement) {
+        this.scrollToElement(targetElement, nextItem);
+      }
+    }
   }
 
   /**
@@ -646,6 +711,9 @@ class ChatGPTNavigator {
     }
     if (this._boundResize) {
       window.removeEventListener('resize', this._boundResize);
+    }
+    if (this._boundKeyDown) {
+      document.removeEventListener('keydown', this._boundKeyDown, true);
     }
     if (this.sidebar) {
       this.sidebar.remove();
