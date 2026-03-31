@@ -119,6 +119,15 @@ class ChatGPTNavigator {
    * Create the sidebar DOM structure
    */
   createSidebar() {
+    // Check URL again inside sidebar creation to be absolutely sure
+    const url = window.location.href;
+    const isChatConversation = url.includes('/c/') || url.includes('/chat/');
+    const isProjectPage = url.includes('/project/');
+    if (!isChatConversation || isProjectPage) {
+      this.logInfo('Not a chat conversation page, skipping sidebar creation');
+      return;
+    }
+
     // Remove existing sidebar if present
     const existing = document.getElementById('chatgpt-navigator-sidebar');
     if (existing) {
@@ -127,8 +136,9 @@ class ChatGPTNavigator {
 
     this.sidebar = document.createElement('div');
     this.sidebar.id = 'chatgpt-navigator-sidebar';
-    // Initially hide the sidebar until first Q&A pair is ready
+    // Initially hide the sidebar with both class and inline style to prevent flash
     this.sidebar.classList.add('hidden');
+    this.sidebar.style.display = 'none';
 
     this.sidebar.innerHTML = `
       <div id="chatgpt-navigator-header">
@@ -217,14 +227,16 @@ class ChatGPTNavigator {
             };
             this.outlineData.push(currentQuestion);
             questionCount++;
-          } else if (role === 'assistant' && currentQuestion) {
-            // Response to current question
-            currentQuestion.responses.push({
-              element: messageEl,
-              text: this.truncateText(text, 50),
-              fullText: text
-            });
-            responseCount++;
+            } else if (role === 'assistant' && currentQuestion) {
+            // Response to current question - only keep the first one
+            if (currentQuestion.responses.length === 0) {
+              currentQuestion.responses.push({
+                element: messageEl,
+                text: this.truncateText(text, 50),
+                fullText: text
+              });
+              responseCount++;
+            }
           }
         } catch (e) {
           this.logError('Error processing message element', e);
@@ -251,17 +263,46 @@ class ChatGPTNavigator {
     if (!this.sidebar) return;
 
     // Check if we have at least one question with at least one response
-    const hasFirstQAPair = this.outlineData.length > 0 &&
-      this.outlineData[0] &&
-      this.outlineData[0].responses &&
-      this.outlineData[0].responses.length > 0;
+    const firstQuestion = this.outlineData[0];
+    const hasFirstQAPair = firstQuestion &&
+      firstQuestion.responses &&
+      firstQuestion.responses.length > 0;
 
-    if (hasFirstQAPair && this.sidebar.classList.contains('hidden')) {
-      this.sidebar.classList.remove('hidden');
-      this.logInfo('First Q&A pair detected, showing sidebar');
-    } else if (!hasFirstQAPair && !this.sidebar.classList.contains('hidden')) {
-      // Hide again if we lost the first Q&A pair (e.g., on new chat)
+    // Check if the first response is still "loading" or "generating"
+    // ChatGPT responses often have a class like 'result-streaming' while generating
+    const firstResponseElement = hasFirstQAPair ? firstQuestion.responses[0].element : null;
+    
+    // Strict loading check: 
+    // 1. Must have a markdown container (actual content)
+    // 2. Must NOT be streaming
+    // 3. Must NOT have a placeholder/loading state
+    const hasContent = firstResponseElement && (
+      firstResponseElement.querySelector('.markdown') || 
+      firstResponseElement.getAttribute('data-message-content')
+    );
+    
+    const isStillGenerating = firstResponseElement && (
+      firstResponseElement.classList.contains('result-streaming') ||
+      firstResponseElement.querySelector('.result-streaming') ||
+      !hasContent
+    );
+
+    if (hasFirstQAPair && !isStillGenerating && (this.sidebar.classList.contains('hidden') || this.sidebar.style.display === 'none')) {
+      this.sidebar.style.display = 'flex';
+      // Small delay to ensure display:flex is applied before removing hidden class for transition
+      requestAnimationFrame(() => {
+        this.sidebar.classList.remove('hidden');
+      });
+      this.logInfo('First Q&A pair fully loaded, showing sidebar');
+    } else if ((!hasFirstQAPair || isStillGenerating) && !this.sidebar.classList.contains('hidden')) {
+      // Hide again if we lost the first Q&A pair or it's still generating
       this.sidebar.classList.add('hidden');
+      // Set display:none after transition finishes (approx 300ms)
+      setTimeout(() => {
+        if (this.sidebar.classList.contains('hidden')) {
+          this.sidebar.style.display = 'none';
+        }
+      }, 300);
     }
   }
 

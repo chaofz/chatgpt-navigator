@@ -13,9 +13,19 @@
   // Wait for DOM to be ready and ChatGPTNavigator class to be available
   function init() {
     // Check if we're on a ChatGPT chat page
-    const isChatGPTPage = window.location.href.includes('chat.openai.com') || 
-                         window.location.href.includes('chatgpt.com');
-    if (!isChatGPTPage) {
+    const url = window.location.href;
+    const isChatGPTPage = url.includes('chat.openai.com') || url.includes('chatgpt.com');
+    
+    // Exclude project pages, index/home pages, and other non-chat paths
+    const isProjectPage = url.includes('/project/');
+    const isSearchPage = url.includes('/search');
+    const isGptsPage = url.includes('/gpts');
+    
+    // The index page is just chatgpt.com/ or chatgpt.com/?oai-dm=1 etc.
+    // Chat pages usually have a UUID: chatgpt.com/c/uuid
+    const isChatConversation = url.includes('/c/') || url.includes('/chat/');
+
+    if (!isChatGPTPage || isProjectPage || isSearchPage || isGptsPage || !isChatConversation) {
       return;
     }
 
