@@ -6,16 +6,19 @@
 const defaultSettings = {
   combineQuestionResponse: false,
   displayMode: 'all',
-  maxQuestions: 10
+  maxQuestions: 10,
+  nightMode: false
 };
+let autoSaveTimer = null;
 
 // Load and display current settings
 async function loadSettings() {
   try {
     const result = await chrome.storage.sync.get(defaultSettings);
     
-    // Set checkbox
+    // Set checkboxes
     document.getElementById('combineQuestionResponse').checked = result.combineQuestionResponse || false;
+    document.getElementById('nightMode').checked = result.nightMode === true;
     
     // Set radio buttons
     const displayMode = result.displayMode || 'all';
@@ -49,7 +52,8 @@ async function saveSettings() {
     const settings = {
       combineQuestionResponse: document.getElementById('combineQuestionResponse').checked,
       displayMode: document.getElementById('displayAll').checked ? 'all' : 'limited',
-      maxQuestions: parseInt(document.getElementById('maxQuestions').value) || 10
+      maxQuestions: parseInt(document.getElementById('maxQuestions').value) || 10,
+      nightMode: document.getElementById('nightMode').checked
     };
     
     await chrome.storage.sync.set(settings);
@@ -67,6 +71,13 @@ async function saveSettings() {
     console.error('Error saving settings:', error);
     showStatus('Error saving settings', 'error');
   }
+}
+
+function scheduleAutoSave() {
+  if (autoSaveTimer) clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => {
+    saveSettings();
+  }, 250);
 }
 
 // Reset to defaults
@@ -95,21 +106,29 @@ function showStatus(message, type) {
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
-  
-  // Save button
-  document.getElementById('saveButton').addEventListener('click', saveSettings);
-  
+
   // Reset button
   document.getElementById('resetButton').addEventListener('click', resetSettings);
   
   // Display mode radio buttons
-  document.getElementById('displayAll').addEventListener('change', updateLimitControlVisibility);
-  document.getElementById('displayLimited').addEventListener('change', updateLimitControlVisibility);
+  document.getElementById('displayAll').addEventListener('change', () => {
+    updateLimitControlVisibility();
+    scheduleAutoSave();
+  });
+  document.getElementById('displayLimited').addEventListener('change', () => {
+    updateLimitControlVisibility();
+    scheduleAutoSave();
+  });
   
   // Number input validation
   document.getElementById('maxQuestions').addEventListener('input', (e) => {
     const value = parseInt(e.target.value);
     if (value < 1) e.target.value = 1;
     if (value > 50) e.target.value = 50;
+    scheduleAutoSave();
   });
+
+  // Auto-save toggles
+  document.getElementById('nightMode').addEventListener('change', scheduleAutoSave);
+  document.getElementById('combineQuestionResponse').addEventListener('change', scheduleAutoSave);
 });

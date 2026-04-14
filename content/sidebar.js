@@ -20,7 +20,8 @@ class ChatGPTNavigator {
     this.settings = {
       combineQuestionResponse: false,
       displayMode: 'all',
-      maxQuestions: 10
+      maxQuestions: 10,
+      nightMode: false
     };
   }
 
@@ -58,7 +59,8 @@ class ChatGPTNavigator {
     const defaults = {
       combineQuestionResponse: false,
       displayMode: 'all',
-      maxQuestions: 10
+      maxQuestions: 10,
+      nightMode: false
     };
     try {
       if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
@@ -88,6 +90,7 @@ class ChatGPTNavigator {
       this.logInfo('Initializing ChatGPT Navigator...');
       await this.loadSettings();
       this.createSidebar();
+      this.applySidebarTheme();
       this.generateOutline();
       this.attachEventListeners();
       this.observeChanges();
@@ -106,6 +109,7 @@ class ChatGPTNavigator {
       chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === 'reloadSettings') {
           this.loadSettings().then(() => {
+            this.applySidebarTheme();
             this.generateOutline();
             sendResponse({ success: true });
           });
@@ -154,6 +158,14 @@ class ChatGPTNavigator {
     document.body.appendChild(this.sidebar);
     this.outline = document.getElementById('chatgpt-navigator-outline');
     this.toggleButton = document.getElementById('chatgpt-navigator-toggle-btn');
+  }
+
+  /**
+   * Apply night mode class from settings (sidebar panel only)
+   */
+  applySidebarTheme() {
+    if (!this.sidebar) return;
+    this.sidebar.classList.toggle('chatgpt-navigator-night', !!this.settings.nightMode);
   }
 
 
