@@ -58,7 +58,7 @@ async function loadSettings() {
 function updateLimitControlVisibility() {
   const displayLimited = document.getElementById('displayLimited').checked;
   const limitControl = document.getElementById('limitControl');
-  limitControl.style.display = displayLimited ? 'block' : 'none';
+  limitControl.hidden = !displayLimited;
 }
 
 // Save settings

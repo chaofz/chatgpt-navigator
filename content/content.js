@@ -130,7 +130,8 @@
   }
 
   function onVoiceShortcut(e) {
-    if (e.ctrlKey && (e.key === 'v' || e.key === 'V')) {
+    // Alt + V (Option + V on Mac)
+    if (e.altKey && (e.key === 'v' || e.key === 'V')) {
       const btn = getVoiceDictateButton();
       if (btn) {
         e.preventDefault();

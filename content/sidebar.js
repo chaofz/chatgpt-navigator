@@ -10,9 +10,8 @@ class ChatGPTNavigator {
     this.toggleButton = null;
     this.pinButton = null;
     this.backButton = null;
-    this.lockButton = null;
     this.pinnedScroll = null;
-    this.scrollLockEnabled = false;
+    this.scrollLockEnabled = true;
     this.scrollLockTop = 0;
     this.scrollLockContainer = null;
     this._scrollLockListenersAttached = false;
@@ -23,12 +22,12 @@ class ChatGPTNavigator {
     this._scrollLockEnforceQueued = false;
     this._scrollIntoViewPatched = false;
     this._nativeScrollIntoView = null;
+    this._scrollLockPostSubmitUntil = 0;
     this.isExpanded = true;
     this.outlineData = [];
     this.activeItem = null;
     this.debug = false;
     this.updateDebounceTimer = null;
-    this.updateDebounceTimerFast = null;
     this.resizeDebounceTimer = null;
     this.observer = null;
     this.logPrefix = '[ChatGPT Navigator]';
@@ -135,20 +134,25 @@ class ChatGPTNavigator {
    * Setup message listener for settings reload
    */
   setupMessageListener() {
-    if (typeof chrome !== 'undefined' && chrome.runtime?.id && chrome.runtime.onMessage) {
-      chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.action === 'reloadSettings') {
-          this.loadSettings().then(() => {
-            this.applySidebarTheme();
-            this.setupThemeObserver();
-            this.applyHeaderToolbarVisibility();
-            this.generateOutline();
-            sendResponse({ success: true });
-          });
-          return true; // Keep channel open for async response
-        }
-      });
+    if (typeof chrome === 'undefined' || !chrome.runtime?.id || !chrome.runtime.onMessage) {
+      return;
     }
+    // Store the listener so destroy() can detach it. Without this, every
+    // SPA navigation (which destroys and re-creates the instance) leaks a
+    // listener that keeps the old instance alive.
+    this._boundMessageListener = (message, sender, sendResponse) => {
+      if (message.action === 'reloadSettings') {
+        this.loadSettings().then(() => {
+          this.applySidebarTheme();
+          this.setupThemeObserver();
+          this.applyHeaderToolbarVisibility();
+          this.generateOutline();
+          sendResponse({ success: true });
+        });
+        return true; // Keep channel open for async response
+      }
+    };
+    chrome.runtime.onMessage.addListener(this._boundMessageListener);
   }
 
   /**
@@ -288,15 +292,29 @@ class ChatGPTNavigator {
     }
 
     if (!this._themeObserver) {
-      this._themeObserver = new MutationObserver(() => this.applySidebarTheme());
+      // rAF-coalesce so a burst of attribute mutations in one frame results
+      // in a single applySidebarTheme() call (which triggers a layout read
+      // via getComputedStyle inside detectPageDarkMode).
+      let themeUpdatePending = false;
+      const scheduleThemeUpdate = () => {
+        if (themeUpdatePending) return;
+        themeUpdatePending = true;
+        requestAnimationFrame(() => {
+          themeUpdatePending = false;
+          this.applySidebarTheme();
+        });
+      };
+      this._themeObserver = new MutationObserver(scheduleThemeUpdate);
+      // ChatGPT signals theme via class / data-theme. Inline `style` changes
+      // are noisy and irrelevant to theme detection, so they're excluded.
       this._themeObserver.observe(document.documentElement, {
         attributes: true,
-        attributeFilter: ['class', 'data-theme', 'style']
+        attributeFilter: ['class', 'data-theme']
       });
       if (document.body) {
         this._themeObserver.observe(document.body, {
           attributes: true,
-          attributeFilter: ['class', 'data-theme', 'style']
+          attributeFilter: ['class', 'data-theme']
         });
       }
     }
@@ -579,117 +597,103 @@ class ChatGPTNavigator {
         return;
       }
 
-      this.outline.innerHTML = '';
+      this.outline.textContent = '';
 
       if (this.outlineData.length === 0) {
-        // Don't show "no messages found" text - just leave it empty
         return;
       }
 
-      // Apply display limit if enabled (show most recent questions)
       let questionsToShow = this.outlineData;
       let startIndex = 0;
       if (this.settings.displayMode === 'limited') {
         const maxQuestions = this.settings.maxQuestions || 10;
-        // Show the most recent questions (last N items)
         startIndex = Math.max(0, this.outlineData.length - maxQuestions);
         questionsToShow = this.outlineData.slice(startIndex);
       }
 
-      questionsToShow.forEach((question, relativeIndex) => {
-        try {
-          // Calculate original index in outlineData
-          const originalIndex = startIndex + relativeIndex;
+      // Cache the truncate length once per render (avoid reading window.innerWidth per item)
+      const maxLen = this.getMaxTruncateLength();
+      const combined = this.settings.combineQuestionResponse;
+      const frag = document.createDocumentFragment();
 
-          if (this.settings.combineQuestionResponse) {
-            // Combined mode: single clickable item for question + response
-            const combinedItem = document.createElement('li');
-            combinedItem.className = 'outline-item outline-item-question';
-            combinedItem.dataset.index = originalIndex;
-            combinedItem.dataset.type = 'combined';
+      for (let i = 0; i < questionsToShow.length; i++) {
+        const question = questionsToShow[i];
+        const originalIndex = startIndex + i;
 
-            const questionText = document.createElement('span');
-            questionText.className = 'outline-item-text';
-            questionText.textContent = this.truncateText(question.fullText, this.getMaxTruncateLength());
-            combinedItem.appendChild(questionText);
+        if (combined) {
+          const combinedItem = document.createElement('li');
+          combinedItem.className = 'outline-item outline-item-question';
+          combinedItem.dataset.index = originalIndex;
+          combinedItem.dataset.type = 'combined';
 
-            // Add response preview if available
-            if (question.responses.length > 0) {
-              const responsePreview = document.createElement('span');
-              responsePreview.className = 'outline-item-text outline-item-response-preview';
-              responsePreview.textContent = this.truncateText(question.responses[0].fullText, this.getMaxTruncateLength());
-              combinedItem.appendChild(responsePreview);
-            }
+          const questionText = document.createElement('span');
+          questionText.className = 'outline-item-text';
+          questionText.textContent = this.truncateText(question.fullText, maxLen);
+          combinedItem.appendChild(questionText);
 
-            combinedItem.addEventListener('click', (e) => {
-              e.stopPropagation();
-              try {
-                this.scrollToElement(question.element, combinedItem);
-              } catch (err) {
-                this.logError('Error scrolling to question', err);
-              }
-            });
-
-            this.outline.appendChild(combinedItem);
-          } else {
-            // Separate mode: question and responses as separate items
-            // Question item
-            const questionItem = document.createElement('li');
-            questionItem.className = 'outline-item outline-item-question';
-            questionItem.dataset.index = originalIndex;
-            questionItem.dataset.type = 'question';
-
-            const questionText = document.createElement('span');
-            questionText.className = 'outline-item-text';
-            questionText.textContent = this.truncateText(question.fullText, this.getMaxTruncateLength());
-            questionItem.appendChild(questionText);
-
-            questionItem.addEventListener('click', (e) => {
-              e.stopPropagation();
-              try {
-                this.scrollToElement(question.element, questionItem);
-              } catch (err) {
-                this.logError('Error scrolling to question', err);
-              }
-            });
-
-            this.outline.appendChild(questionItem);
-
-            // Response items
-            question.responses.forEach((response, rIndex) => {
-              try {
-                const responseItem = document.createElement('li');
-                responseItem.className = 'outline-item outline-item-response';
-                responseItem.dataset.index = `${originalIndex}-${rIndex}`;
-                responseItem.dataset.type = 'response';
-
-                const responseText = document.createElement('span');
-                responseText.className = 'outline-item-text';
-                responseText.textContent = this.truncateText(response.fullText, this.getMaxTruncateLength());
-                responseItem.appendChild(responseText);
-
-                responseItem.addEventListener('click', (e) => {
-                  e.stopPropagation();
-                  try {
-                    this.scrollToElement(response.element, responseItem);
-                  } catch (err) {
-                    this.logError('Error scrolling to response', err);
-                  }
-                });
-
-                this.outline.appendChild(responseItem);
-              } catch (err) {
-                this.logError(`Error rendering response ${rIndex}`, err);
-              }
-            });
+          if (question.responses.length > 0) {
+            const responsePreview = document.createElement('span');
+            responsePreview.className = 'outline-item-text outline-item-response-preview';
+            responsePreview.textContent = this.truncateText(question.responses[0].fullText, maxLen);
+            combinedItem.appendChild(responsePreview);
           }
-        } catch (err) {
-          this.logError(`Error rendering question ${qIndex}`, err);
+
+          frag.appendChild(combinedItem);
+        } else {
+          const questionItem = document.createElement('li');
+          questionItem.className = 'outline-item outline-item-question';
+          questionItem.dataset.index = originalIndex;
+          questionItem.dataset.type = 'question';
+
+          const questionText = document.createElement('span');
+          questionText.className = 'outline-item-text';
+          questionText.textContent = this.truncateText(question.fullText, maxLen);
+          questionItem.appendChild(questionText);
+
+          frag.appendChild(questionItem);
+
+          const responses = question.responses;
+          for (let r = 0; r < responses.length; r++) {
+            const response = responses[r];
+            const responseItem = document.createElement('li');
+            responseItem.className = 'outline-item outline-item-response';
+            responseItem.dataset.index = `${originalIndex}-${r}`;
+            responseItem.dataset.type = 'response';
+
+            const responseText = document.createElement('span');
+            responseText.className = 'outline-item-text';
+            responseText.textContent = this.truncateText(response.fullText, maxLen);
+            responseItem.appendChild(responseText);
+
+            frag.appendChild(responseItem);
+          }
         }
-      });
+      }
+
+      // Detaching the active item via re-render clears the highlight; keep refs consistent.
+      this.activeItem = null;
+      this.outline.appendChild(frag);
     } catch (error) {
       this.logError('Failed to render outline', error);
     }
+  }
+
+  /**
+   * Resolve which message element an outline item points at.
+   */
+  _getTargetForOutlineItem(item) {
+    if (!item) return null;
+    const type = item.dataset.type;
+    const indexStr = item.dataset.index;
+    if (type === 'question' || type === 'combined') {
+      const qIndex = parseInt(indexStr, 10);
+      return this.outlineData[qIndex]?.element || null;
+    }
+    if (type === 'response') {
+      const [qIndex, rIndex] = indexStr.split('-').map(Number);
+      return this.outlineData[qIndex]?.responses[rIndex]?.element || null;
+    }
+    return null;
   }
 
   /**
@@ -878,19 +882,74 @@ class ChatGPTNavigator {
     }
   }
 
-  _markScrollLockUserIntent() {
+  _markScrollLockUserIntent(duration = 1000) {
     if (!this.scrollLockEnabled) return;
     this._scrollLockUserIntent = true;
     clearTimeout(this._scrollLockUserIntentTimer);
     this._scrollLockUserIntentTimer = setTimeout(() => {
       this._scrollLockUserIntent = false;
-    }, 200);
+    }, duration);
+  }
+
+  _clearScrollLockUserIntent() {
+    clearTimeout(this._scrollLockUserIntentTimer);
+    this._scrollLockUserIntentTimer = null;
+    this._scrollLockUserIntent = false;
+  }
+
+  /**
+   * Mark that a prompt was just submitted. During this window we force-ignore
+   * the user-intent flag so ChatGPT's post-submit scroll-to-bottom (and the
+   * follow-up scroll-to-bottom from the first streamed tokens) cannot move
+   * the lock anchor. Without this, a "typed-then-clicked-Send" sequence
+   * leaves user-intent=true for ~1s and the scroll handler updates
+   * scrollLockTop to the new bottom instead of restoring.
+   */
+  _markScrollLockSubmission(duration = 1500) {
+    if (!this.scrollLockEnabled) return;
+    this._clearScrollLockUserIntent();
+    this._scrollLockPostSubmitUntil = performance.now() + duration;
+  }
+
+  _inPostSubmitWindow() {
+    return this._scrollLockPostSubmitUntil > performance.now();
   }
 
   _onScrollLockKeyDown(e) {
     if (!this.scrollLockEnabled) return;
-    const scrollKeys = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '];
-    if (scrollKeys.includes(e.key)) this._markScrollLockUserIntent();
+
+    // If typing in an input or textarea, treat as user intent to allow natural auto-scroll
+    const target = e.target;
+    const isInput = target && (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable ||
+      target.getAttribute('role') === 'textbox'
+    );
+
+    if (isInput) {
+      // Submission keys: Enter (without Shift), Cmd+Enter, Ctrl+Enter
+      const isSubmission = e.key === 'Enter' && (!e.shiftKey || e.metaKey || e.ctrlKey);
+      if (isSubmission) {
+        // Drop any lingering typing intent and start a post-submit window so
+        // ChatGPT's auto-scroll-to-bottom after submit can't reset the anchor.
+        this._markScrollLockSubmission();
+      } else {
+        this._markScrollLockUserIntent();
+      }
+      return;
+    }
+
+    const scrollKeys = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ', 'Enter'];
+    if (scrollKeys.includes(e.key)) {
+      // For navigation keys like Enter or Arrows, give a bit more time for any 
+      // resulting programmatic scrolls to finish.
+      this._markScrollLockUserIntent(1000);
+    } else if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'g')) {
+      // Common search shortcuts - give much more time as the user might be 
+      // interacting with browser search UI for a while.
+      this._markScrollLockUserIntent(10000);
+    }
   }
 
   _onScrollLockScroll() {
@@ -902,7 +961,18 @@ class ChatGPTNavigator {
     this.scrollLockContainer = container;
     const top = this._readScrollTop(container);
 
-    if (this._scrollLockUserIntent || top < this.scrollLockTop - 1) {
+    const inPostSubmit = this._inPostSubmitWindow();
+
+    // Upward scrolls always reflect the user (or our own restoration); follow them.
+    if (top < this.scrollLockTop - 1) {
+      this.scrollLockTop = top;
+      return;
+    }
+
+    // Honor user intent only when we're NOT in a post-submit window. Otherwise
+    // a lingering typing-intent flag would let ChatGPT's auto-scroll-to-bottom
+    // after submit move the anchor.
+    if (this._scrollLockUserIntent && !inPostSubmit) {
       this.scrollLockTop = top;
       return;
     }
@@ -934,7 +1004,7 @@ class ChatGPTNavigator {
     this.scrollLockContainer = container;
     const top = this._readScrollTop(container);
 
-    if (this._scrollLockUserIntent) {
+    if (this._scrollLockUserIntent && !this._inPostSubmitWindow()) {
       this.scrollLockTop = top;
       return;
     }
@@ -948,23 +1018,107 @@ class ChatGPTNavigator {
     }
   }
 
+  _isSubmitButton(el) {
+    if (!el) return false;
+
+    // Model switchers and other dropdowns should NEVER be treated as submit buttons
+    if (el.getAttribute('aria-haspopup') || el.getAttribute('aria-controls')) return false;
+
+    // Stop-generation button is NOT a submit; treating it as one would clear
+    // intent and let the scroll-anchor drift while streaming.
+    const stopTestIds = new Set(['stop-button', 'composer-stop-button', 'fruitjuice-stop-button']);
+    const elTestId = el.getAttribute('data-testid');
+    if (elTestId && stopTestIds.has(elTestId)) return false;
+    const elAria = (el.getAttribute('aria-label') || '').toLowerCase();
+    if (elAria.includes('stop generating') || elAria === 'stop') return false;
+
+    // Check common ChatGPT submit button attributes
+    if (elTestId === 'send-button' || elTestId === 'fruitjuice-send-button') return true;
+
+    // Use more specific matching for "send" to avoid catching "send feedback" etc.
+    if (elAria === 'send prompt' || elAria === 'send message' || elAria === 'send') return true;
+    if (elAria.includes('submit')) return true;
+
+    const title = (el.getAttribute('title') || '').toLowerCase();
+    if (title === 'send prompt' || title === 'send message' || title === 'send') return true;
+
+    if (el.type === 'submit') return true;
+    
+    // Check if it contains a send icon (common in ChatGPT)
+    const svg = el.querySelector('svg');
+    if (svg) {
+      const paths = Array.from(svg.querySelectorAll('path'));
+      // This specific path is very common for the ChatGPT send icon
+      if (paths.some(p => p.getAttribute('d')?.includes('M15.1,12.1L12.9,14.3'))) return true;
+    }
+    
+    // Check if it's the primary button in the composer form
+    const form = el.closest('form');
+    if (form) {
+      const composer = form.querySelector('[data-testid="composer-textarea"]');
+      if (composer && form.contains(el)) {
+        // In the composer form, the main button is usually the send button
+        // especially if it's positioned at the bottom right
+        const rect = el.getBoundingClientRect();
+        const formRect = form.getBoundingClientRect();
+        // Send button is almost always in the bottom right of the form
+        if (rect.right > formRect.right - 50 && rect.bottom > formRect.bottom - 50) return true;
+      }
+    }
+    
+    return false;
+  }
+
   _attachScrollLockListeners() {
     if (this._scrollLockListenersAttached) return;
 
     this._boundScrollLockScroll = () => this._onScrollLockScroll();
     this._boundScrollLockUserInput = () => this._markScrollLockUserIntent();
     this._boundScrollLockKeyDown = (e) => this._onScrollLockKeyDown(e);
-    this._boundScrollLockPointerDown = () => this._markScrollLockUserIntent();
+    this._boundScrollLockPointerDown = (e) => {
+      const target = e.target;
+      if (!target || !(target instanceof Element)) return;
+
+      // Don't mark intent if clicking our own sidebar
+      if (this.sidebar && (this.sidebar === target || this.sidebar.contains(target))) {
+        return;
+      }
+
+      const btn = target.closest('button, [role="button"], a');
+      if (btn) {
+        // Only clear intent if it's likely the "Send" button.
+        // Other buttons (like search results, navigation links, etc.) should
+        // be treated as user intent to scroll.
+        if (this._isSubmitButton(btn)) {
+          this._markScrollLockSubmission();
+        } else {
+          this._markScrollLockUserIntent();
+        }
+        return;
+      }
+
+      if (target.closest('input, textarea, [contenteditable="true"]')) {
+        return;
+      }
+
+      this._markScrollLockUserIntent();
+    };
 
     const container = this._getChatScrollContainer();
     this.scrollLockContainer = container;
     if (container) {
       container.addEventListener('scroll', this._boundScrollLockScroll, { passive: true });
-      container.addEventListener('pointerdown', this._boundScrollLockPointerDown, { passive: true });
     } else {
       window.addEventListener('scroll', this._boundScrollLockScroll, { passive: true });
     }
 
+    // pointerdown must live on document (capture) so we catch clicks on the
+    // Send button, which lives in the fixed composer outside the chat scroll
+    // container. Previously it was attached to the container only, so a
+    // mouse-submitted prompt left user-intent=true from typing and the
+    // resulting auto-scroll-to-bottom updated scrollLockTop instead of
+    // being restored.
+    document.addEventListener('pointerdown', this._boundScrollLockPointerDown, { passive: true, capture: true });
     document.addEventListener('wheel', this._boundScrollLockUserInput, { passive: true, capture: true });
     document.addEventListener('touchstart', this._boundScrollLockUserInput, { passive: true, capture: true });
     document.addEventListener('keydown', this._boundScrollLockKeyDown, true);
@@ -977,16 +1131,17 @@ class ChatGPTNavigator {
     const container = this.scrollLockContainer;
     if (container) {
       container.removeEventListener('scroll', this._boundScrollLockScroll);
-      container.removeEventListener('pointerdown', this._boundScrollLockPointerDown);
     } else {
       window.removeEventListener('scroll', this._boundScrollLockScroll);
     }
 
+    document.removeEventListener('pointerdown', this._boundScrollLockPointerDown, true);
     document.removeEventListener('wheel', this._boundScrollLockUserInput, true);
     document.removeEventListener('touchstart', this._boundScrollLockUserInput, true);
     document.removeEventListener('keydown', this._boundScrollLockKeyDown, true);
     clearTimeout(this._scrollLockUserIntentTimer);
     this._scrollLockUserIntent = false;
+    this._scrollLockPostSubmitUntil = 0;
     this._scrollLockListenersAttached = false;
   }
 
@@ -1033,12 +1188,29 @@ class ChatGPTNavigator {
       });
     }
 
-    // Toggle button for expand/collapse
     if (this.toggleButton) {
       this.toggleButton.addEventListener('click', () => this.toggleExpand());
     }
 
-    // Re-render outline on resize so truncation adapts to width
+    // Single delegated click handler for all outline items. Avoids attaching
+    // one listener per item on every renderOutline() call.
+    if (this.outline) {
+      this._boundOutlineClick = (e) => {
+        const item = e.target.closest('.outline-item');
+        if (!item || !this.outline.contains(item)) return;
+        e.stopPropagation();
+        const target = this._getTargetForOutlineItem(item);
+        if (target) {
+          try {
+            this.scrollToElement(target, item);
+          } catch (err) {
+            this.logError('Error scrolling from outline click', err);
+          }
+        }
+      };
+      this.outline.addEventListener('click', this._boundOutlineClick);
+    }
+
     this._boundResize = () => {
       clearTimeout(this.resizeDebounceTimer);
       this.resizeDebounceTimer = setTimeout(() => {
@@ -1047,7 +1219,6 @@ class ChatGPTNavigator {
     };
     window.addEventListener('resize', this._boundResize);
 
-    // Option + Arrow shortcuts for navigation
     this._boundKeyDown = (e) => this.handleKeyDown(e);
     document.addEventListener('keydown', this._boundKeyDown, true);
   }
@@ -1094,19 +1265,7 @@ class ChatGPTNavigator {
 
     const nextItem = items[nextIndex];
     if (nextItem) {
-      // Find the corresponding element in the DOM
-      const type = nextItem.dataset.type;
-      const indexStr = nextItem.dataset.index;
-
-      let targetElement = null;
-      if (type === 'question' || type === 'combined') {
-        const qIndex = parseInt(indexStr);
-        targetElement = this.outlineData[qIndex]?.element;
-      } else if (type === 'response') {
-        const [qIndex, rIndex] = indexStr.split('-').map(Number);
-        targetElement = this.outlineData[qIndex]?.responses[rIndex]?.element;
-      }
-
+      const targetElement = this._getTargetForOutlineItem(nextItem);
       if (targetElement) {
         this.scrollToElement(targetElement, nextItem);
       }
@@ -1138,26 +1297,25 @@ class ChatGPTNavigator {
         this.observer.disconnect();
       }
 
+      const runUpdate = () => {
+        try {
+          this.generateOutline();
+        } catch (error) {
+          this.logError('Error in outline update observer', error);
+        }
+      };
+
       this.observer = new MutationObserver(() => {
         if (this.scrollLockEnabled) {
           this._scheduleScrollLockEnforce();
         }
 
-        const runUpdate = () => {
-          try {
-            this.generateOutline();
-          } catch (error) {
-            this.logError('Error in outline update observer', error);
-          }
-        };
-        // When nav is still hidden: short debounce (500ms) so we show as soon as content appears
-        if (this.sidebar?.classList.contains('hidden')) {
-          clearTimeout(this.updateDebounceTimerFast);
-          this.updateDebounceTimerFast = setTimeout(runUpdate, 500);
-        }
-        // Always schedule full debounce (500ms) for stable updates; avoids thrashing while streaming when visible
+        // Shorter debounce while the sidebar hasn't appeared yet so it shows
+        // up quickly; longer debounce afterwards to avoid re-rendering on
+        // every streaming chunk.
+        const delay = this.sidebar?.classList.contains('hidden') ? 150 : 500;
         clearTimeout(this.updateDebounceTimer);
-        this.updateDebounceTimer = setTimeout(runUpdate, 500);
+        this.updateDebounceTimer = setTimeout(runUpdate, delay);
       });
 
       // Observe the main content area
@@ -1190,9 +1348,6 @@ class ChatGPTNavigator {
     if (this.updateDebounceTimer) {
       clearTimeout(this.updateDebounceTimer);
     }
-    if (this.updateDebounceTimerFast) {
-      clearTimeout(this.updateDebounceTimerFast);
-    }
     if (this.resizeDebounceTimer) {
       clearTimeout(this.resizeDebounceTimer);
     }
@@ -1201,6 +1356,16 @@ class ChatGPTNavigator {
     }
     if (this._boundKeyDown) {
       document.removeEventListener('keydown', this._boundKeyDown, true);
+    }
+    if (this._boundOutlineClick && this.outline) {
+      this.outline.removeEventListener('click', this._boundOutlineClick);
+    }
+    if (this._boundMessageListener && typeof chrome !== 'undefined' && chrome.runtime?.id && chrome.runtime.onMessage) {
+      try {
+        chrome.runtime.onMessage.removeListener(this._boundMessageListener);
+      } catch (e) {
+        // Extension context may already be invalidated; ignore.
+      }
     }
     if (this.scrollLockEnabled) {
       this.setScrollLock(false);

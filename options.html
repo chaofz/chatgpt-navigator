@@ -3,117 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ChatGPT Navigator - Options</title>
+  <title>ChatGPT Navigator — Settings</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
   <div class="container">
     <header class="header">
-      <h1>ChatGPT Navigator Settings</h1>
-      <p class="subtitle">Customize your navigation sidebar experience</p>
+      <h1>Settings</h1>
+      <p class="subtitle">ChatGPT Navigator</p>
     </header>
 
-    <main class="main-content">
-      <section class="option-section">
-        <div class="option-header">
-          <h2>Appearance</h2>
-          <p class="option-description">How the navigation sidebar looks on ChatGPT</p>
-        </div>
-        <div class="option-control">
-          <label class="radio-label">
-            <input type="radio" name="themeMode" value="auto" id="themeAuto" class="radio-input" checked>
-            <span class="radio-custom"></span>
-            <span class="radio-text">Match ChatGPT (auto)</span>
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="themeMode" value="light" id="themeLight" class="radio-input">
-            <span class="radio-custom"></span>
-            <span class="radio-text">Light sidebar</span>
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="themeMode" value="dark" id="themeDark" class="radio-input">
-            <span class="radio-custom"></span>
-            <span class="radio-text">Dark sidebar</span>
-          </label>
-          <p class="option-hint">Auto detects light or dark mode from the ChatGPT page and updates when you change the app theme.</p>
-        </div>
-      </section>
-
-      <section class="option-section">
-        <div class="option-header">
-          <h2>Scroll Behavior</h2>
-          <p class="option-description">Control how the page scrolls during conversations</p>
-        </div>
-        <div class="option-control">
-          <label class="toggle-label">
-            <input type="checkbox" id="scrollLockEnabled" class="toggle-input">
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">Lock scroll by default</span>
-          </label>
-          <p class="option-hint">When enabled, the page won't automatically scroll to the bottom when ChatGPT generates a new response. You can still scroll manually.</p>
+    <main>
+      <section class="group">
+        <h2 class="group-title">Appearance</h2>
+        <div class="row row-stack">
+          <div class="row-info">
+            <div class="row-label">Theme</div>
+            <div class="row-help">Match ChatGPT or pick a fixed mode.</div>
+          </div>
+          <div class="segmented" role="radiogroup" aria-label="Theme">
+            <label>
+              <input type="radio" name="themeMode" value="auto" id="themeAuto" checked>
+              <span>Auto</span>
+            </label>
+            <label>
+              <input type="radio" name="themeMode" value="light" id="themeLight">
+              <span>Light</span>
+            </label>
+            <label>
+              <input type="radio" name="themeMode" value="dark" id="themeDark">
+              <span>Dark</span>
+            </label>
+          </div>
         </div>
       </section>
 
-      <section class="option-section">
-        <div class="option-header">
-          <h2>Toolbar</h2>
-          <p class="option-description">Buttons at the top of the navigation sidebar</p>
+      <section class="group">
+        <h2 class="group-title">Behavior</h2>
+
+        <label class="row row-toggle" for="scrollLockEnabled">
+          <div class="row-info">
+            <div class="row-label">Lock scroll</div>
+            <div class="row-help">Prevent the page from auto-scrolling while ChatGPT replies.</div>
+          </div>
+          <span class="switch">
+            <input type="checkbox" id="scrollLockEnabled" checked>
+            <span class="switch-track"></span>
+          </span>
+        </label>
+
+        <label class="row row-toggle" for="showPinBackButtons">
+          <div class="row-info">
+            <div class="row-label">Pin &amp; back buttons</div>
+            <div class="row-help">Show controls to remember and return to a scroll position.</div>
+          </div>
+          <span class="switch">
+            <input type="checkbox" id="showPinBackButtons">
+            <span class="switch-track"></span>
+          </span>
+        </label>
+
+        <label class="row row-toggle" for="combineQuestionResponse">
+          <div class="row-info">
+            <div class="row-label">Combine Q &amp; A</div>
+            <div class="row-help">Treat each question and its answer as one outline item.</div>
+          </div>
+          <span class="switch">
+            <input type="checkbox" id="combineQuestionResponse">
+            <span class="switch-track"></span>
+          </span>
+        </label>
+      </section>
+
+      <section class="group">
+        <h2 class="group-title">Outline</h2>
+        <div class="row row-stack">
+          <div class="row-info">
+            <div class="row-label">Show</div>
+            <div class="row-help">Limit the outline to the most recent questions.</div>
+          </div>
+          <div class="segmented" role="radiogroup" aria-label="Outline display">
+            <label>
+              <input type="radio" name="displayMode" value="all" id="displayAll" checked>
+              <span>All</span>
+            </label>
+            <label>
+              <input type="radio" name="displayMode" value="limited" id="displayLimited">
+              <span>Limit</span>
+            </label>
+          </div>
         </div>
-        <div class="option-control">
-          <label class="toggle-label">
-            <input type="checkbox" id="showPinBackButtons" class="toggle-input">
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">Show pin and back buttons</span>
-          </label>
-          <p class="option-hint">Collapse always stays visible. Pin remembers scroll position; back returns to it.</p>
+        <div class="row row-inline" id="limitControl" hidden>
+          <div class="row-info">
+            <div class="row-label">Max questions</div>
+          </div>
+          <input type="number" id="maxQuestions" min="1" max="50" value="10" class="number-input">
         </div>
       </section>
 
-      <section class="option-section">
-        <div class="option-header">
-          <h2>Click Behavior</h2>
-          <p class="option-description">Choose how clicking on outline items works</p>
-        </div>
-        <div class="option-control">
-          <label class="toggle-label">
-            <input type="checkbox" id="combineQuestionResponse" class="toggle-input">
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">Combine question and response as one clickable item</span>
-          </label>
-          <p class="option-hint">When enabled, questions and responses are combined. Clicking goes to the question.</p>
-        </div>
-      </section>
-
-      <section class="option-section">
-        <div class="option-header">
-          <h2>Display Limit</h2>
-          <p class="option-description">Control how many questions are shown in the outline</p>
-        </div>
-        <div class="option-control">
-          <label class="radio-label">
-            <input type="radio" name="displayMode" value="all" id="displayAll" class="radio-input" checked>
-            <span class="radio-custom"></span>
-            <span class="radio-text">Show all questions</span>
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="displayMode" value="limited" id="displayLimited" class="radio-input">
-            <span class="radio-custom"></span>
-            <span class="radio-text">Limit number of questions</span>
-          </label>
-        </div>
-        <div class="option-control" id="limitControl" style="display: none;">
-          <label class="number-label">
-            <span class="number-label-text">Maximum questions to show:</span>
-            <input type="number" id="maxQuestions" min="1" max="50" value="10" class="number-input">
-          </label>
-          <p class="option-hint">The outline will be scrollable if there are more questions than this limit.</p>
-        </div>
-      </section>
-
-      <div class="actions">
-        <button id="resetButton" class="button button-secondary">Reset to Defaults</button>
-        <div id="statusMessage" class="status-message"></div>
-      </div>
+      <footer class="actions">
+        <span id="statusMessage" class="status-message" role="status" aria-live="polite"></span>
+        <button id="resetButton" class="button">Reset to defaults</button>
+      </footer>
     </main>
   </div>
   <script src="options.js"></script>
