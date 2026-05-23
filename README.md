@@ -8,8 +8,10 @@ A Chrome extension that adds a navigation sidebar to ChatGPT conversations, allo
 - **Nested outline structure** - Questions with responses nested underneath
 - **Quick navigation** - Click any outline item to smoothly scroll to that message
 - **Auto-updates** - Outline automatically refreshes as new messages are added
-- **Minimal design** - Matches ChatGPT's aesthetic with support for light and dark modes
+- **Adaptive appearance** - Auto-match ChatGPT light/dark theme, or force light or dark sidebar in options
 - **Toggle visibility** - Show/hide the sidebar with a button
+- **Scroll lock** - Lock the viewport so new responses do not auto-scroll you to the bottom (leftmost header button)
+- **Scroll pin & back** - Pin scroll position and jump back (can hide in options)
 
 ## Installation
 
@@ -28,8 +30,10 @@ A Chrome extension that adds a navigation sidebar to ChatGPT conversations, allo
 2. Start or open a conversation
 3. The navigation sidebar will appear on the right side of the page
 4. Click any question or response in the outline to jump to that message
-5. Use the × button in the sidebar header to hide it
-6. Click the toggle button (appears when sidebar is hidden) to show it again
+5. Click the lock button (left) to freeze scroll while reading; new responses will not pull you to the bottom until you unlock
+6. Use the arrow button to collapse or expand the sidebar
+7. Use pin and back to save and restore scroll position (disable in options under Toolbar if you prefer a minimal bar)
+8. Open extension options to set sidebar appearance: match ChatGPT automatically (default), or always light or dark
 
 ## How It Works
 
@@ -45,6 +49,9 @@ The extension:
 ```
 chatgpt-navigator/
 ├── manifest.json          # Extension manifest (Manifest V3)
+├── options.html           # Settings page (appearance, outline behavior)
+├── options.js
+├── options.css
 ├── content/
 │   ├── content.js         # Main content script entry point
 │   ├── sidebar.js         # Sidebar logic and ChatGPTNavigator class

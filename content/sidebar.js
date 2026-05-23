@@ -8,6 +8,21 @@ class ChatGPTNavigator {
     this.sidebar = null;
     this.outline = null;
     this.toggleButton = null;
+    this.pinButton = null;
+    this.backButton = null;
+    this.lockButton = null;
+    this.pinnedScroll = null;
+    this.scrollLockEnabled = false;
+    this.scrollLockTop = 0;
+    this.scrollLockContainer = null;
+    this._scrollLockListenersAttached = false;
+    this._scrollLockUserIntent = false;
+    this._scrollLockUserIntentTimer = null;
+    this._scrollLockBypass = false;
+    this._scrollLockRestoring = false;
+    this._scrollLockEnforceQueued = false;
+    this._scrollIntoViewPatched = false;
+    this._nativeScrollIntoView = null;
     this.isExpanded = true;
     this.outlineData = [];
     this.activeItem = null;
@@ -21,8 +36,12 @@ class ChatGPTNavigator {
       combineQuestionResponse: false,
       displayMode: 'all',
       maxQuestions: 10,
-      nightMode: false
+      themeMode: 'auto',
+      showPinBackButtons: true
     };
+    this._themeObserver = null;
+    this._themeMediaQuery = null;
+    this._boundThemeMediaChange = null;
   }
 
   /**
@@ -60,7 +79,9 @@ class ChatGPTNavigator {
       combineQuestionResponse: false,
       displayMode: 'all',
       maxQuestions: 10,
-      nightMode: false
+      themeMode: 'auto',
+      showPinBackButtons: true,
+      scrollLockEnabled: false
     };
     try {
       if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
@@ -69,6 +90,8 @@ class ChatGPTNavigator {
       }
       const result = await chrome.storage.sync.get(defaults);
       this.settings = result;
+      this.settings.themeMode = this._normalizeThemeMode(result);
+      this.scrollLockEnabled = !!result.scrollLockEnabled;
       this.logInfo('Settings loaded:', this.settings);
     } catch (error) {
       const invalidated = error?.message?.includes('Extension context invalidated');
@@ -90,7 +113,14 @@ class ChatGPTNavigator {
       this.logInfo('Initializing ChatGPT Navigator...');
       await this.loadSettings();
       this.createSidebar();
+      if (this.scrollLockEnabled) {
+        // Force re-enable to setup listeners and UI
+        const targetState = this.scrollLockEnabled;
+        this.scrollLockEnabled = false; 
+        this.setScrollLock(targetState);
+      }
       this.applySidebarTheme();
+      this.setupThemeObserver();
       this.generateOutline();
       this.attachEventListeners();
       this.observeChanges();
@@ -110,6 +140,8 @@ class ChatGPTNavigator {
         if (message.action === 'reloadSettings') {
           this.loadSettings().then(() => {
             this.applySidebarTheme();
+            this.setupThemeObserver();
+            this.applyHeaderToolbarVisibility();
             this.generateOutline();
             sendResponse({ success: true });
           });
@@ -146,8 +178,25 @@ class ChatGPTNavigator {
 
     this.sidebar.innerHTML = `
       <div id="chatgpt-navigator-header">
-        <button id="chatgpt-navigator-toggle-btn" aria-label="Toggle sidebar">
-          <svg id="chatgpt-navigator-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button type="button" id="chatgpt-navigator-lock-btn" class="chatgpt-navigator-header-btn" aria-label="Lock scroll (disable auto-scroll on new response)" title="Lock scroll — stop auto-scroll to bottom" aria-pressed="false">
+          <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="5" y="11" width="14" height="10" rx="2"/>
+            <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+          </svg>
+        </button>
+        <button type="button" id="chatgpt-navigator-pin-btn" class="chatgpt-navigator-header-btn" aria-label="Pin scroll position" title="Pin scroll position">
+          <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+          </svg>
+        </button>
+        <button type="button" id="chatgpt-navigator-back-btn" class="chatgpt-navigator-header-btn" aria-label="Back to pinned scroll position" title="Back to pinned position" disabled>
+          <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 4.5 4 9 9 13.5"/>
+            <path d="M4 9H14a2 2 0 0 1 2 2v7.5"/>
+          </svg>
+        </button>
+        <button type="button" id="chatgpt-navigator-toggle-btn" class="chatgpt-navigator-header-btn" aria-label="Toggle sidebar">
+          <svg id="chatgpt-navigator-toggle-icon" class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M15 18l-6-6 6-6"/>
           </svg>
         </button>
@@ -157,7 +206,72 @@ class ChatGPTNavigator {
 
     document.body.appendChild(this.sidebar);
     this.outline = document.getElementById('chatgpt-navigator-outline');
+    this.pinButton = document.getElementById('chatgpt-navigator-pin-btn');
+    this.backButton = document.getElementById('chatgpt-navigator-back-btn');
+    this.lockButton = document.getElementById('chatgpt-navigator-lock-btn');
     this.toggleButton = document.getElementById('chatgpt-navigator-toggle-btn');
+    this.applyHeaderToolbarVisibility();
+    this.updateScrollPinUI();
+    this.updateScrollLockUI();
+  }
+
+  /**
+   * Show or hide optional pin/back toolbar buttons from settings.
+   */
+  applyHeaderToolbarVisibility() {
+    const show = !!this.settings.showPinBackButtons;
+    if (this.pinButton) this.pinButton.hidden = !show;
+    if (this.backButton) this.backButton.hidden = !show;
+    if (!show) this.pinnedScroll = null;
+    this.updateScrollPinUI();
+  }
+
+  /**
+   * Resolve themeMode from storage (migrates legacy nightMode boolean).
+   */
+  _normalizeThemeMode(settings) {
+    const mode = settings?.themeMode;
+    if (mode === 'auto' || mode === 'light' || mode === 'dark') return mode;
+    return settings?.nightMode ? 'dark' : 'light';
+  }
+
+  /**
+   * Detect whether ChatGPT is in dark mode from the page DOM/CSS.
+   */
+  detectPageDarkMode() {
+    const root = document.documentElement;
+    if (root.classList.contains('dark') || root.getAttribute('data-theme') === 'dark') {
+      return true;
+    }
+    if (root.classList.contains('light') || root.getAttribute('data-theme') === 'light') {
+      return false;
+    }
+
+    const body = document.body;
+    if (body) {
+      if (body.classList.contains('dark') || body.getAttribute('data-theme') === 'dark') {
+        return true;
+      }
+      if (body.classList.contains('light') || body.getAttribute('data-theme') === 'light') {
+        return false;
+      }
+    }
+
+    const colorScheme = getComputedStyle(root).colorScheme;
+    if (colorScheme === 'dark') return true;
+    if (colorScheme === 'light') return false;
+
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+
+  /**
+   * Whether the sidebar should use night (dark) styling.
+   */
+  shouldUseNightMode() {
+    const mode = this._normalizeThemeMode(this.settings);
+    if (mode === 'dark') return true;
+    if (mode === 'light') return false;
+    return this.detectPageDarkMode();
   }
 
   /**
@@ -165,7 +279,54 @@ class ChatGPTNavigator {
    */
   applySidebarTheme() {
     if (!this.sidebar) return;
-    this.sidebar.classList.toggle('chatgpt-navigator-night', !!this.settings.nightMode);
+    this.sidebar.classList.toggle('chatgpt-navigator-night', this.shouldUseNightMode());
+  }
+
+  /**
+   * Watch ChatGPT theme changes when themeMode is auto.
+   */
+  setupThemeObserver() {
+    const mode = this._normalizeThemeMode(this.settings);
+    if (mode !== 'auto') {
+      this._teardownThemeObserver();
+      return;
+    }
+
+    if (!this._themeObserver) {
+      this._themeObserver = new MutationObserver(() => this.applySidebarTheme());
+      this._themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'data-theme', 'style']
+      });
+      if (document.body) {
+        this._themeObserver.observe(document.body, {
+          attributes: true,
+          attributeFilter: ['class', 'data-theme', 'style']
+        });
+      }
+    }
+
+    if (!this._themeMediaQuery) {
+      this._themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      this._boundThemeMediaChange = () => {
+        if (this._normalizeThemeMode(this.settings) === 'auto') {
+          this.applySidebarTheme();
+        }
+      };
+      this._themeMediaQuery.addEventListener('change', this._boundThemeMediaChange);
+    }
+  }
+
+  _teardownThemeObserver() {
+    if (this._themeObserver) {
+      this._themeObserver.disconnect();
+      this._themeObserver = null;
+    }
+    if (this._themeMediaQuery && this._boundThemeMediaChange) {
+      this._themeMediaQuery.removeEventListener('change', this._boundThemeMediaChange);
+      this._themeMediaQuery = null;
+      this._boundThemeMediaChange = null;
+    }
   }
 
 
@@ -239,7 +400,7 @@ class ChatGPTNavigator {
             };
             this.outlineData.push(currentQuestion);
             questionCount++;
-            } else if (role === 'assistant' && currentQuestion) {
+          } else if (role === 'assistant' && currentQuestion) {
             // Response to current question - only keep the first one
             if (currentQuestion.responses.length === 0) {
               currentQuestion.responses.push({
@@ -283,16 +444,16 @@ class ChatGPTNavigator {
     // Check if the first response is still "loading" or "generating"
     // ChatGPT responses often have a class like 'result-streaming' while generating
     const firstResponseElement = hasFirstQAPair ? firstQuestion.responses[0].element : null;
-    
+
     // Strict loading check: 
     // 1. Must have a markdown container (actual content)
     // 2. Must NOT be streaming
     // 3. Must NOT have a placeholder/loading state
     const hasContent = firstResponseElement && (
-      firstResponseElement.querySelector('.markdown') || 
+      firstResponseElement.querySelector('.markdown') ||
       firstResponseElement.getAttribute('data-message-content')
     );
-    
+
     const isStillGenerating = firstResponseElement && (
       firstResponseElement.classList.contains('result-streaming') ||
       firstResponseElement.querySelector('.result-streaming') ||
@@ -548,12 +709,25 @@ class ChatGPTNavigator {
 
     const duration = 250;
     const scrollParent = this._getScrollParent(targetElement);
+    const offsetAbove = 30;
+    this._scrollLockBypass = true;
 
-    const offsetAbove = 30; /* 10px more above than default (20px) */
+    const finish = () => {
+      if (this.scrollLockEnabled) this._captureScrollLockAnchor();
+      this._scrollLockBypass = false;
+      if (this.activeItem === outlineItem) {
+        outlineItem.classList.remove('active');
+        this.activeItem = null;
+      }
+    };
 
     if (scrollParent) {
       const startTop = scrollParent.scrollTop;
-      targetElement.scrollIntoView({ block: 'start', behavior: 'auto' });
+      if (this._nativeScrollIntoView) {
+        this._nativeScrollIntoView.call(targetElement, { block: 'start', behavior: 'auto' });
+      } else {
+        targetElement.scrollIntoView({ block: 'start', behavior: 'auto' });
+      }
       const endTop = Math.max(0, scrollParent.scrollTop - 37);
       scrollParent.scrollTop = startTop;
       const startTime = performance.now();
@@ -562,6 +736,7 @@ class ChatGPTNavigator {
         const eased = 1 - Math.pow(1 - t, 2);
         scrollParent.scrollTop = startTop + (endTop - startTop) * eased;
         if (t < 1) requestAnimationFrame(run);
+        else finish();
       };
       requestAnimationFrame(run);
     } else {
@@ -574,16 +749,10 @@ class ChatGPTNavigator {
         const eased = 1 - Math.pow(1 - t, 2);
         window.scrollTo(0, startY + (endY - startY) * eased);
         if (t < 1) requestAnimationFrame(run);
+        else finish();
       };
       requestAnimationFrame(run);
     }
-
-    setTimeout(() => {
-      if (this.activeItem === outlineItem) {
-        outlineItem.classList.remove('active');
-        this.activeItem = null;
-      }
-    }, duration + 50);
   }
 
   _getScrollParent(el) {
@@ -598,11 +767,300 @@ class ChatGPTNavigator {
     return null;
   }
 
+  /**
+   * Main scroll container for the chat transcript
+   */
+  _getChatScrollContainer() {
+    const anchor = document.querySelector('[data-message-author-role]');
+    if (anchor) {
+      const parent = this._getScrollParent(anchor);
+      if (parent) return parent;
+    }
+    const main = document.querySelector('main') || document.querySelector('[role="main"]');
+    if (main) {
+      const parent = this._getScrollParent(main);
+      if (parent) return parent;
+    }
+    return null;
+  }
+
+  _getCurrentScrollState() {
+    const container = this._getChatScrollContainer();
+    if (container) {
+      return { container, scrollTop: container.scrollTop };
+    }
+    return { container: null, scrollTop: window.scrollY };
+  }
+
+  _resolvePinnedContainer() {
+    if (!this.pinnedScroll) return null;
+    const { container } = this.pinnedScroll;
+    if (container && container.isConnected) return container;
+    return this._getChatScrollContainer();
+  }
+
+  pinScrollPosition() {
+    this.pinnedScroll = this._getCurrentScrollState();
+    this.updateScrollPinUI();
+    this.logInfo('Pinned scroll position:', this.pinnedScroll.scrollTop);
+  }
+
+  restoreScrollPosition() {
+    if (!this.pinnedScroll) return;
+
+    const container = this._resolvePinnedContainer();
+    const targetTop = this.pinnedScroll.scrollTop;
+    const duration = 250;
+    this._scrollLockBypass = true;
+
+    const finish = () => {
+      if (this.scrollLockEnabled) this._captureScrollLockAnchor();
+      this._scrollLockBypass = false;
+    };
+
+    if (container) {
+      const startTop = container.scrollTop;
+      const startTime = performance.now();
+      const run = (now) => {
+        const t = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 2);
+        container.scrollTop = startTop + (targetTop - startTop) * eased;
+        if (t < 1) requestAnimationFrame(run);
+        else finish();
+      };
+      requestAnimationFrame(run);
+    } else {
+      const startY = window.scrollY;
+      const startTime = performance.now();
+      const run = (now) => {
+        const t = Math.min((now - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 2);
+        window.scrollTo(0, startY + (targetTop - startY) * eased);
+        if (t < 1) requestAnimationFrame(run);
+        else finish();
+      };
+      requestAnimationFrame(run);
+    }
+  }
+
+  _readScrollTop(container) {
+    return container ? container.scrollTop : window.scrollY;
+  }
+
+  _writeScrollTop(container, top) {
+    if (container) container.scrollTop = top;
+    else window.scrollTo(0, top);
+  }
+
+  _captureScrollLockAnchor() {
+    this.scrollLockContainer = this._getChatScrollContainer();
+    this.scrollLockTop = this._readScrollTop(this.scrollLockContainer);
+  }
+
+  toggleScrollLock() {
+    this.setScrollLock(!this.scrollLockEnabled);
+  }
+
+  setScrollLock(enabled) {
+    if (enabled === this.scrollLockEnabled) return;
+
+    this.scrollLockEnabled = enabled;
+    
+    // Persist the lock mode
+    if (typeof chrome !== 'undefined' && chrome.runtime?.id) {
+      chrome.storage.sync.set({ scrollLockEnabled: enabled });
+    }
+
+    if (enabled) {
+      this._captureScrollLockAnchor();
+      this._attachScrollLockListeners();
+      this._enableScrollIntoViewBlock();
+      this.logInfo('Scroll lock enabled at', this.scrollLockTop);
+    } else {
+      this._detachScrollLockListeners();
+      this._disableScrollIntoViewBlock();
+      this.logInfo('Scroll lock disabled');
+    }
+    this.updateScrollLockUI();
+  }
+
+  updateScrollLockUI() {
+    if (!this.lockButton) return;
+    this.lockButton.classList.toggle('locked', this.scrollLockEnabled);
+    this.lockButton.setAttribute('aria-pressed', this.scrollLockEnabled ? 'true' : 'false');
+    this.lockButton.title = this.scrollLockEnabled
+      ? 'Unlock scroll — allow auto-scroll to bottom'
+      : 'Lock scroll — stop auto-scroll to bottom';
+    this.lockButton.setAttribute(
+      'aria-label',
+      this.scrollLockEnabled
+        ? 'Unlock scroll (allow auto-scroll on new response)'
+        : 'Lock scroll (disable auto-scroll on new response)'
+    );
+  }
+
+  _markScrollLockUserIntent() {
+    if (!this.scrollLockEnabled) return;
+    this._scrollLockUserIntent = true;
+    clearTimeout(this._scrollLockUserIntentTimer);
+    this._scrollLockUserIntentTimer = setTimeout(() => {
+      this._scrollLockUserIntent = false;
+    }, 200);
+  }
+
+  _onScrollLockKeyDown(e) {
+    if (!this.scrollLockEnabled) return;
+    const scrollKeys = ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '];
+    if (scrollKeys.includes(e.key)) this._markScrollLockUserIntent();
+  }
+
+  _onScrollLockScroll() {
+    if (!this.scrollLockEnabled || this._scrollLockBypass || this._scrollLockRestoring) return;
+
+    const container = this.scrollLockContainer?.isConnected
+      ? this.scrollLockContainer
+      : this._getChatScrollContainer();
+    this.scrollLockContainer = container;
+    const top = this._readScrollTop(container);
+
+    if (this._scrollLockUserIntent || top < this.scrollLockTop - 1) {
+      this.scrollLockTop = top;
+      return;
+    }
+
+    if (top > this.scrollLockTop + 1) {
+      this._scrollLockRestoring = true;
+      this._writeScrollTop(container, this.scrollLockTop);
+      requestAnimationFrame(() => {
+        this._scrollLockRestoring = false;
+      });
+    }
+  }
+
+  _scheduleScrollLockEnforce() {
+    if (!this.scrollLockEnabled || this._scrollLockEnforceQueued) return;
+    this._scrollLockEnforceQueued = true;
+    requestAnimationFrame(() => {
+      this._scrollLockEnforceQueued = false;
+      this._enforceScrollLock();
+    });
+  }
+
+  _enforceScrollLock() {
+    if (!this.scrollLockEnabled || this._scrollLockBypass || this._scrollLockRestoring) return;
+
+    const container = this.scrollLockContainer?.isConnected
+      ? this.scrollLockContainer
+      : this._getChatScrollContainer();
+    this.scrollLockContainer = container;
+    const top = this._readScrollTop(container);
+
+    if (this._scrollLockUserIntent) {
+      this.scrollLockTop = top;
+      return;
+    }
+
+    if (top > this.scrollLockTop + 1) {
+      this._scrollLockRestoring = true;
+      this._writeScrollTop(container, this.scrollLockTop);
+      requestAnimationFrame(() => {
+        this._scrollLockRestoring = false;
+      });
+    }
+  }
+
+  _attachScrollLockListeners() {
+    if (this._scrollLockListenersAttached) return;
+
+    this._boundScrollLockScroll = () => this._onScrollLockScroll();
+    this._boundScrollLockUserInput = () => this._markScrollLockUserIntent();
+    this._boundScrollLockKeyDown = (e) => this._onScrollLockKeyDown(e);
+    this._boundScrollLockPointerDown = () => this._markScrollLockUserIntent();
+
+    const container = this._getChatScrollContainer();
+    this.scrollLockContainer = container;
+    if (container) {
+      container.addEventListener('scroll', this._boundScrollLockScroll, { passive: true });
+      container.addEventListener('pointerdown', this._boundScrollLockPointerDown, { passive: true });
+    } else {
+      window.addEventListener('scroll', this._boundScrollLockScroll, { passive: true });
+    }
+
+    document.addEventListener('wheel', this._boundScrollLockUserInput, { passive: true, capture: true });
+    document.addEventListener('touchstart', this._boundScrollLockUserInput, { passive: true, capture: true });
+    document.addEventListener('keydown', this._boundScrollLockKeyDown, true);
+    this._scrollLockListenersAttached = true;
+  }
+
+  _detachScrollLockListeners() {
+    if (!this._scrollLockListenersAttached) return;
+
+    const container = this.scrollLockContainer;
+    if (container) {
+      container.removeEventListener('scroll', this._boundScrollLockScroll);
+      container.removeEventListener('pointerdown', this._boundScrollLockPointerDown);
+    } else {
+      window.removeEventListener('scroll', this._boundScrollLockScroll);
+    }
+
+    document.removeEventListener('wheel', this._boundScrollLockUserInput, true);
+    document.removeEventListener('touchstart', this._boundScrollLockUserInput, true);
+    document.removeEventListener('keydown', this._boundScrollLockKeyDown, true);
+    clearTimeout(this._scrollLockUserIntentTimer);
+    this._scrollLockUserIntent = false;
+    this._scrollLockListenersAttached = false;
+  }
+
+  _enableScrollIntoViewBlock() {
+    if (this._scrollIntoViewPatched) return;
+    const native = Element.prototype.scrollIntoView;
+    this._nativeScrollIntoView = native;
+    const self = this;
+    Element.prototype.scrollIntoView = function scrollIntoViewWithLock(...args) {
+      if (self.scrollLockEnabled && !self._scrollLockBypass) return;
+      return native.apply(this, args);
+    };
+    this._scrollIntoViewPatched = true;
+  }
+
+  _disableScrollIntoViewBlock() {
+    if (!this._scrollIntoViewPatched || !this._nativeScrollIntoView) return;
+    Element.prototype.scrollIntoView = this._nativeScrollIntoView;
+    this._scrollIntoViewPatched = false;
+  }
+
+  updateScrollPinUI() {
+    if (!this.pinButton || !this.backButton) return;
+    const hasPin = this.pinnedScroll != null;
+    this.pinButton.classList.toggle('pinned', hasPin);
+    this.backButton.disabled = !hasPin;
+  }
 
   /**
    * Attach event listeners
    */
   attachEventListeners() {
+    if (this.pinButton) {
+      this.pinButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.pinScrollPosition();
+      });
+    }
+
+    if (this.backButton) {
+      this.backButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.restoreScrollPosition();
+      });
+    }
+
+    if (this.lockButton) {
+      this.lockButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleScrollLock();
+      });
+    }
+
     // Toggle button for expand/collapse
     if (this.toggleButton) {
       this.toggleButton.addEventListener('click', () => this.toggleExpand());
@@ -667,7 +1125,7 @@ class ChatGPTNavigator {
       // Find the corresponding element in the DOM
       const type = nextItem.dataset.type;
       const indexStr = nextItem.dataset.index;
-      
+
       let targetElement = null;
       if (type === 'question' || type === 'combined') {
         const qIndex = parseInt(indexStr);
@@ -709,6 +1167,10 @@ class ChatGPTNavigator {
       }
 
       this.observer = new MutationObserver(() => {
+        if (this.scrollLockEnabled) {
+          this._scheduleScrollLockEnforce();
+        }
+
         const runUpdate = () => {
           try {
             this.generateOutline();
@@ -768,9 +1230,14 @@ class ChatGPTNavigator {
     if (this._boundKeyDown) {
       document.removeEventListener('keydown', this._boundKeyDown, true);
     }
+    if (this.scrollLockEnabled) {
+      this.setScrollLock(false);
+    }
+    this._teardownThemeObserver();
     if (this.sidebar) {
       this.sidebar.remove();
     }
+    this.pinnedScroll = null;
   }
 }
 

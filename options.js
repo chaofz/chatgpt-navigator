@@ -7,8 +7,17 @@ const defaultSettings = {
   combineQuestionResponse: false,
   displayMode: 'all',
   maxQuestions: 10,
-  nightMode: false
+  themeMode: 'auto',
+  showPinBackButtons: true,
+  scrollLockEnabled: false
 };
+
+function normalizeThemeMode(settings) {
+  if (settings.themeMode === 'auto' || settings.themeMode === 'light' || settings.themeMode === 'dark') {
+    return settings.themeMode;
+  }
+  return settings.nightMode ? 'dark' : 'light';
+}
 let autoSaveTimer = null;
 
 // Load and display current settings
@@ -18,7 +27,12 @@ async function loadSettings() {
     
     // Set checkboxes
     document.getElementById('combineQuestionResponse').checked = result.combineQuestionResponse || false;
-    document.getElementById('nightMode').checked = result.nightMode === true;
+    document.getElementById('showPinBackButtons').checked = result.showPinBackButtons === true;
+
+    const themeMode = normalizeThemeMode(result);
+    document.getElementById('themeAuto').checked = themeMode === 'auto';
+    document.getElementById('themeLight').checked = themeMode === 'light';
+    document.getElementById('themeDark').checked = themeMode === 'dark';
     
     // Set radio buttons
     const displayMode = result.displayMode || 'all';
@@ -53,7 +67,8 @@ async function saveSettings() {
       combineQuestionResponse: document.getElementById('combineQuestionResponse').checked,
       displayMode: document.getElementById('displayAll').checked ? 'all' : 'limited',
       maxQuestions: parseInt(document.getElementById('maxQuestions').value) || 10,
-      nightMode: document.getElementById('nightMode').checked
+      themeMode: document.querySelector('input[name="themeMode"]:checked')?.value || 'auto',
+      showPinBackButtons: document.getElementById('showPinBackButtons').checked
     };
     
     await chrome.storage.sync.set(settings);
@@ -129,6 +144,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Auto-save toggles
-  document.getElementById('nightMode').addEventListener('change', scheduleAutoSave);
+  document.querySelectorAll('input[name="themeMode"]').forEach((input) => {
+    input.addEventListener('change', scheduleAutoSave);
+  });
   document.getElementById('combineQuestionResponse').addEventListener('change', scheduleAutoSave);
+  document.getElementById('showPinBackButtons').addEventListener('change', scheduleAutoSave);
 });

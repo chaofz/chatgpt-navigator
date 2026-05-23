@@ -20,12 +20,37 @@
           <p class="option-description">How the navigation sidebar looks on ChatGPT</p>
         </div>
         <div class="option-control">
-          <label class="toggle-label">
-            <input type="checkbox" id="nightMode" class="toggle-input">
-            <span class="toggle-slider"></span>
-            <span class="toggle-text">Night mode (dark sidebar)</span>
+          <label class="radio-label">
+            <input type="radio" name="themeMode" value="auto" id="themeAuto" class="radio-input" checked>
+            <span class="radio-custom"></span>
+            <span class="radio-text">Match ChatGPT (auto)</span>
           </label>
-          <p class="option-hint">Uses a dark background and light text for the outline panel.</p>
+          <label class="radio-label">
+            <input type="radio" name="themeMode" value="light" id="themeLight" class="radio-input">
+            <span class="radio-custom"></span>
+            <span class="radio-text">Light sidebar</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="themeMode" value="dark" id="themeDark" class="radio-input">
+            <span class="radio-custom"></span>
+            <span class="radio-text">Dark sidebar</span>
+          </label>
+          <p class="option-hint">Auto detects light or dark mode from the ChatGPT page and updates when you change the app theme.</p>
+        </div>
+      </section>
+
+      <section class="option-section">
+        <div class="option-header">
+          <h2>Toolbar</h2>
+          <p class="option-description">Buttons at the top of the navigation sidebar</p>
+        </div>
+        <div class="option-control">
+          <label class="toggle-label">
+            <input type="checkbox" id="showPinBackButtons" class="toggle-input">
+            <span class="toggle-slider"></span>
+            <span class="toggle-text">Show pin and back buttons</span>
+          </label>
+          <p class="option-hint">Lock and collapse always stay visible. Pin remembers scroll position; back returns to it.</p>
         </div>
       </section>
 
