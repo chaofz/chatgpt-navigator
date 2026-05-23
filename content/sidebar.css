@@ -50,15 +50,25 @@
   padding: 4px 6px 4px;
 }
 
-#chatgpt-navigator-lock-btn,
 #chatgpt-navigator-pin-btn,
 #chatgpt-navigator-back-btn,
 #chatgpt-navigator-toggle-btn {
   flex: 1 1 0;
 }
 
-#chatgpt-navigator-lock-btn {
-  margin-right: auto;
+#chatgpt-navigator-sidebar.chatgpt-navigator-only-toggle #chatgpt-navigator-header {
+  display: block;
+  text-align: right;
+}
+
+#chatgpt-navigator-sidebar.chatgpt-navigator-only-toggle #chatgpt-navigator-toggle-btn {
+  display: inline-flex;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+#chatgpt-navigator-sidebar.chatgpt-navigator-only-toggle:hover #chatgpt-navigator-toggle-btn {
+  opacity: 1;
 }
 
 #chatgpt-navigator-pin-btn[hidden],
@@ -169,30 +179,52 @@
 
 .chatgpt-navigator-header-btn:disabled {
   cursor: default;
-  opacity: 0.35;
 }
 
 .chatgpt-navigator-header-icon {
   width: 15px;
   height: 15px;
-  color: #9ca3af;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
 }
 
-#chatgpt-navigator-pin-btn.pinned .chatgpt-navigator-header-icon,
-#chatgpt-navigator-lock-btn.locked .chatgpt-navigator-header-icon,
-#chatgpt-navigator-back-btn:not(:disabled) .chatgpt-navigator-header-icon {
-  color: #111827;
+#chatgpt-navigator-pin-btn .chatgpt-navigator-header-icon {
+  width: 13px;
+  height: 13px;
 }
 
+/* Pin and back: gray when inactive */
+#chatgpt-navigator-pin-btn .chatgpt-navigator-header-icon,
+#chatgpt-navigator-back-btn .chatgpt-navigator-header-icon {
+  color: #6b7280;
+}
+
+#chatgpt-navigator-back-btn:disabled .chatgpt-navigator-header-icon {
+  color: #6b7280;
+  opacity: 0.4;
+}
+
+/* Pin and back: brighter when active */
+#chatgpt-navigator-pin-btn.pinned .chatgpt-navigator-header-icon,
+#chatgpt-navigator-back-btn:not(:disabled) .chatgpt-navigator-header-icon {
+  color: #111827;
+  opacity: 1;
+}
+
+/* Collapse toggle: always muted gray */
+#chatgpt-navigator-toggle-btn .chatgpt-navigator-header-icon,
 #chatgpt-navigator-toggle-icon {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #6b7280;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease;
 }
 
 #chatgpt-navigator-sidebar.collapsed #chatgpt-navigator-header {
   flex-direction: column;
   gap: 4px;
   padding: 4px 4px 4px;
+}
+
+#chatgpt-navigator-sidebar.chatgpt-navigator-only-toggle.collapsed #chatgpt-navigator-header {
+  display: block;
 }
 
 #chatgpt-navigator-sidebar.collapsed .chatgpt-navigator-header-btn {
@@ -248,14 +280,24 @@
   color: #a1a1a6;
 }
 
-#chatgpt-navigator-sidebar.chatgpt-navigator-night .chatgpt-navigator-header-icon {
-  color: #71717a;
+#chatgpt-navigator-sidebar.chatgpt-navigator-night #chatgpt-navigator-pin-btn .chatgpt-navigator-header-icon,
+#chatgpt-navigator-sidebar.chatgpt-navigator-night #chatgpt-navigator-back-btn .chatgpt-navigator-header-icon {
+  color: #6b7280;
+}
+
+#chatgpt-navigator-sidebar.chatgpt-navigator-night #chatgpt-navigator-back-btn:disabled .chatgpt-navigator-header-icon {
+  color: #6b7280;
+  opacity: 0.4;
 }
 
 #chatgpt-navigator-sidebar.chatgpt-navigator-night #chatgpt-navigator-pin-btn.pinned .chatgpt-navigator-header-icon,
-#chatgpt-navigator-sidebar.chatgpt-navigator-night #chatgpt-navigator-lock-btn.locked .chatgpt-navigator-header-icon,
 #chatgpt-navigator-sidebar.chatgpt-navigator-night #chatgpt-navigator-back-btn:not(:disabled) .chatgpt-navigator-header-icon {
   color: #ffffff;
+  opacity: 1;
+}
+
+#chatgpt-navigator-sidebar.chatgpt-navigator-night #chatgpt-navigator-toggle-btn .chatgpt-navigator-header-icon {
+  color: #6b7280;
 }
 
 #chatgpt-navigator-sidebar.chatgpt-navigator-night .chatgpt-navigator-header-btn:hover:not(:disabled) {

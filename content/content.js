@@ -3,7 +3,7 @@
  * Main entry point for the extension
  */
 
-(function() {
+(function () {
   'use strict';
 
   const DEBUG = false;
@@ -15,12 +15,12 @@
     // Check if we're on a ChatGPT chat page
     const url = window.location.href;
     const isChatGPTPage = url.includes('chat.openai.com') || url.includes('chatgpt.com');
-    
+
     // Exclude project pages, index/home pages, and other non-chat paths
     const isProjectPage = url.includes('/project/');
     const isSearchPage = url.includes('/search');
     const isGptsPage = url.includes('/gpts');
-    
+
     // The index page is just chatgpt.com/ or chatgpt.com/?oai-dm=1 etc.
     // Chat pages usually have a UUID: chatgpt.com/c/uuid
     const isChatConversation = url.includes('/c/') || url.includes('/chat/');
@@ -156,7 +156,7 @@
       try {
         const btn = document.querySelector(selector);
         if (btn && btn.offsetParent !== null && !btn.disabled) return btn;
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // Fallback: search all buttons for "Send" or "Submit" labels or icons

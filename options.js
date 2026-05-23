@@ -9,7 +9,7 @@ const defaultSettings = {
   maxQuestions: 10,
   themeMode: 'auto',
   showPinBackButtons: true,
-  scrollLockEnabled: false
+  scrollLockEnabled: true
 };
 
 function normalizeThemeMode(settings) {
@@ -28,6 +28,7 @@ async function loadSettings() {
     // Set checkboxes
     document.getElementById('combineQuestionResponse').checked = result.combineQuestionResponse || false;
     document.getElementById('showPinBackButtons').checked = result.showPinBackButtons === true;
+    document.getElementById('scrollLockEnabled').checked = result.scrollLockEnabled === true;
 
     const themeMode = normalizeThemeMode(result);
     document.getElementById('themeAuto').checked = themeMode === 'auto';
@@ -68,14 +69,15 @@ async function saveSettings() {
       displayMode: document.getElementById('displayAll').checked ? 'all' : 'limited',
       maxQuestions: parseInt(document.getElementById('maxQuestions').value) || 10,
       themeMode: document.querySelector('input[name="themeMode"]:checked')?.value || 'auto',
-      showPinBackButtons: document.getElementById('showPinBackButtons').checked
+      showPinBackButtons: document.getElementById('showPinBackButtons').checked,
+      scrollLockEnabled: document.getElementById('scrollLockEnabled').checked
     };
     
     await chrome.storage.sync.set(settings);
     showStatus('Settings saved successfully!', 'success');
     
     // Notify content scripts to reload settings
-    chrome.tabs.query({ url: ['https://chat.openai.com/*', 'https://chatgpt.com/*'] }, (tabs) => {
+    chrome.tabs.query({ url: ['https://chatgpt.com/*'] }, (tabs) => {
       tabs.forEach(tab => {
         chrome.tabs.sendMessage(tab.id, { action: 'reloadSettings' }).catch(() => {
           // Tab might not have content script loaded yet, ignore
@@ -149,4 +151,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('combineQuestionResponse').addEventListener('change', scheduleAutoSave);
   document.getElementById('showPinBackButtons').addEventListener('change', scheduleAutoSave);
+  document.getElementById('scrollLockEnabled').addEventListener('change', scheduleAutoSave);
 });

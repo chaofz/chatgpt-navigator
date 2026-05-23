@@ -81,7 +81,7 @@ class ChatGPTNavigator {
       maxQuestions: 10,
       themeMode: 'auto',
       showPinBackButtons: true,
-      scrollLockEnabled: false
+      scrollLockEnabled: true
     };
     try {
       if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
@@ -116,7 +116,7 @@ class ChatGPTNavigator {
       if (this.scrollLockEnabled) {
         // Force re-enable to setup listeners and UI
         const targetState = this.scrollLockEnabled;
-        this.scrollLockEnabled = false; 
+        this.scrollLockEnabled = false;
         this.setScrollLock(targetState);
       }
       this.applySidebarTheme();
@@ -178,21 +178,15 @@ class ChatGPTNavigator {
 
     this.sidebar.innerHTML = `
       <div id="chatgpt-navigator-header">
-        <button type="button" id="chatgpt-navigator-lock-btn" class="chatgpt-navigator-header-btn" aria-label="Lock scroll (disable auto-scroll on new response)" title="Lock scroll — stop auto-scroll to bottom" aria-pressed="false">
-          <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="5" y="11" width="14" height="10" rx="2"/>
-            <path d="M8 11V8a4 4 0 0 1 8 0v3"/>
-          </svg>
-        </button>
         <button type="button" id="chatgpt-navigator-pin-btn" class="chatgpt-navigator-header-btn" aria-label="Pin scroll position" title="Pin scroll position">
           <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            <path d="M19 23l-7-5-7 5V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
           </svg>
         </button>
         <button type="button" id="chatgpt-navigator-back-btn" class="chatgpt-navigator-header-btn" aria-label="Back to pinned scroll position" title="Back to pinned position" disabled>
           <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M9 4.5 4 9 9 13.5"/>
-            <path d="M4 9H14a2 2 0 0 1 2 2v7.5"/>
+            <path d="M9 5.5 4 10 9 14.5"/>
+            <path d="M4 10H14a2 2 0 0 1 2 2v7.5"/>
           </svg>
         </button>
         <button type="button" id="chatgpt-navigator-toggle-btn" class="chatgpt-navigator-header-btn" aria-label="Toggle sidebar">
@@ -208,11 +202,9 @@ class ChatGPTNavigator {
     this.outline = document.getElementById('chatgpt-navigator-outline');
     this.pinButton = document.getElementById('chatgpt-navigator-pin-btn');
     this.backButton = document.getElementById('chatgpt-navigator-back-btn');
-    this.lockButton = document.getElementById('chatgpt-navigator-lock-btn');
     this.toggleButton = document.getElementById('chatgpt-navigator-toggle-btn');
     this.applyHeaderToolbarVisibility();
     this.updateScrollPinUI();
-    this.updateScrollLockUI();
   }
 
   /**
@@ -222,6 +214,9 @@ class ChatGPTNavigator {
     const show = !!this.settings.showPinBackButtons;
     if (this.pinButton) this.pinButton.hidden = !show;
     if (this.backButton) this.backButton.hidden = !show;
+    if (this.sidebar) {
+      this.sidebar.classList.toggle('chatgpt-navigator-only-toggle', !show);
+    }
     if (!show) this.pinnedScroll = null;
     this.updateScrollPinUI();
   }
@@ -865,7 +860,7 @@ class ChatGPTNavigator {
     if (enabled === this.scrollLockEnabled) return;
 
     this.scrollLockEnabled = enabled;
-    
+
     // Persist the lock mode
     if (typeof chrome !== 'undefined' && chrome.runtime?.id) {
       chrome.storage.sync.set({ scrollLockEnabled: enabled });
@@ -881,22 +876,6 @@ class ChatGPTNavigator {
       this._disableScrollIntoViewBlock();
       this.logInfo('Scroll lock disabled');
     }
-    this.updateScrollLockUI();
-  }
-
-  updateScrollLockUI() {
-    if (!this.lockButton) return;
-    this.lockButton.classList.toggle('locked', this.scrollLockEnabled);
-    this.lockButton.setAttribute('aria-pressed', this.scrollLockEnabled ? 'true' : 'false');
-    this.lockButton.title = this.scrollLockEnabled
-      ? 'Unlock scroll — allow auto-scroll to bottom'
-      : 'Lock scroll — stop auto-scroll to bottom';
-    this.lockButton.setAttribute(
-      'aria-label',
-      this.scrollLockEnabled
-        ? 'Unlock scroll (allow auto-scroll on new response)'
-        : 'Lock scroll (disable auto-scroll on new response)'
-    );
   }
 
   _markScrollLockUserIntent() {
@@ -1051,13 +1030,6 @@ class ChatGPTNavigator {
       this.backButton.addEventListener('click', (e) => {
         e.stopPropagation();
         this.restoreScrollPosition();
-      });
-    }
-
-    if (this.lockButton) {
-      this.lockButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.toggleScrollLock();
       });
     }
 
