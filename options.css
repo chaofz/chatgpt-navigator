@@ -18,8 +18,26 @@
   --radius-sm: 6px;
 }
 
+body.theme-dark {
+  --bg: #0a0a0a;
+  --surface: #111113;
+  --border: #1f1f23;
+  --border-strong: #2a2a2f;
+  --text: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --text-subtle: #71717a;
+  --accent: #f4f4f5;
+  --accent-contrast: #18181b;
+  --hover: #18181b;
+  --focus: rgba(244, 244, 245, 0.12);
+  --success-bg: rgba(16, 185, 129, 0.12);
+  --success-fg: #34d399;
+  --error-bg: rgba(239, 68, 68, 0.12);
+  --error-fg: #f87171;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  body:not(.theme-light) {
     --bg: #0a0a0a;
     --surface: #111113;
     --border: #1f1f23;
@@ -68,7 +86,7 @@ body {
 }
 
 .header h1 {
-  font-size: 22px;
+  font-size: 32px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text);

@@ -34,10 +34,9 @@ class ChatGPTNavigator {
     this.logPrefix = '[ChatGPT Navigator]';
     this.settings = {
       combineQuestionResponse: false,
-      displayMode: 'all',
-      maxQuestions: 10,
       themeMode: 'auto',
       showPinButton: true,
+      showOutline: true,
       showScrollLockButton: true
     };
     this._themeObserver = null;
@@ -78,10 +77,9 @@ class ChatGPTNavigator {
   async loadSettings() {
     const defaults = {
       combineQuestionResponse: false,
-      displayMode: 'all',
-      maxQuestions: 10,
       themeMode: 'auto',
       showPinButton: true,
+      showOutline: true,
       showScrollLockButton: true,
       scrollLockEnabled: true
     };
@@ -221,12 +219,16 @@ class ChatGPTNavigator {
   applyHeaderToolbarVisibility() {
     const showPin = !!this.settings.showPinButton;
     const showLock = !!this.settings.showScrollLockButton;
+    const showOutline = this.settings.showOutline !== false;
 
     if (this.lockButton) this.lockButton.hidden = !showLock;
     if (this.pinButton) this.pinButton.hidden = !showPin;
+    if (this.toggleButton) this.toggleButton.hidden = !showOutline;
+    if (this.outline) this.outline.hidden = !showOutline;
 
     if (this.sidebar) {
       this.sidebar.classList.toggle('chatgpt-navigator-only-toggle', !showPin && !showLock);
+      this.sidebar.classList.toggle('chatgpt-navigator-vertical-only', !showOutline);
     }
 
     if (!showPin) this.pinnedScroll = null;
@@ -482,14 +484,16 @@ class ChatGPTNavigator {
       !hasContent
     );
 
-    if (hasFirstQAPair && !isStillGenerating && (this.sidebar.classList.contains('hidden') || this.sidebar.style.display === 'none')) {
+    const showAlways = this.settings.showOutline === false;
+
+    if ((hasFirstQAPair || showAlways) && !isStillGenerating && (this.sidebar.classList.contains('hidden') || this.sidebar.style.display === 'none')) {
       this.sidebar.style.display = 'flex';
       // Small delay to ensure display:flex is applied before removing hidden class for transition
       requestAnimationFrame(() => {
         this.sidebar.classList.remove('hidden');
       });
-      this.logInfo('First Q&A pair fully loaded, showing sidebar');
-    } else if ((!hasFirstQAPair || isStillGenerating) && !this.sidebar.classList.contains('hidden')) {
+      this.logInfo(showAlways ? 'Outline disabled, showing icons' : 'First Q&A pair fully loaded, showing sidebar');
+    } else if (!showAlways && (!hasFirstQAPair || isStillGenerating) && !this.sidebar.classList.contains('hidden')) {
       // Hide again if we lost the first Q&A pair or it's still generating
       this.sidebar.classList.add('hidden');
       // Set display:none after transition finishes (approx 300ms)

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Navigator: Sidebar & Table of Contents",
+  "name": "ChatGPT Navigator",
   "version": "1.0.0",
   "description": "Enhance your ChatGPT experience with a navigation sidebar, automatic Table of Contents, scroll lock, and URL-based automation.",
   "icons": {

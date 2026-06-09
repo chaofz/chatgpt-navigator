@@ -5,19 +5,27 @@
 // Default settings
 const defaultSettings = {
   combineQuestionResponse: false,
-  displayMode: 'all',
-  maxQuestions: 10,
   themeMode: 'auto',
   showPinButton: true,
+  showOutline: true,
   showScrollLockButton: true,
   scrollLockEnabled: true
 };
 
 function normalizeThemeMode(settings) {
-  if (settings.themeMode === 'auto' || settings.themeMode === 'light' || settings.themeMode === 'dark') {
-    return settings.themeMode;
+  const mode = settings.themeMode === 'auto' || settings.themeMode === 'light' || settings.themeMode === 'dark' 
+    ? settings.themeMode 
+    : 'auto';
+  
+  // Apply theme to options page body
+  document.body.classList.remove('theme-light', 'theme-dark');
+  if (mode === 'light') {
+    document.body.classList.add('theme-light');
+  } else if (mode === 'dark') {
+    document.body.classList.add('theme-dark');
   }
-  return settings.nightMode ? 'dark' : 'light';
+  
+  return mode;
 }
 let autoSaveTimer = null;
 
@@ -29,37 +37,17 @@ async function loadSettings() {
     // Set checkboxes
     document.getElementById('combineQuestionResponse').checked = result.combineQuestionResponse || false;
     document.getElementById('showPinButton').checked = result.showPinButton === true;
+    document.getElementById('showOutline').checked = result.showOutline === true;
     document.getElementById('showScrollLockButton').checked = result.showScrollLockButton === true;
 
     const themeMode = normalizeThemeMode(result);
     document.getElementById('themeAuto').checked = themeMode === 'auto';
     document.getElementById('themeLight').checked = themeMode === 'light';
     document.getElementById('themeDark').checked = themeMode === 'dark';
-    
-    // Set radio buttons
-    const displayMode = result.displayMode || 'all';
-    if (displayMode === 'all') {
-      document.getElementById('displayAll').checked = true;
-    } else {
-      document.getElementById('displayLimited').checked = true;
-    }
-    
-    // Set number input
-    document.getElementById('maxQuestions').value = result.maxQuestions || 10;
-    
-    // Show/hide limit control
-    updateLimitControlVisibility();
   } catch (error) {
     console.error('Error loading settings:', error);
     showStatus('Error loading settings', 'error');
   }
-}
-
-// Update limit control visibility based on selected mode
-function updateLimitControlVisibility() {
-  const displayLimited = document.getElementById('displayLimited').checked;
-  const limitControl = document.getElementById('limitControl');
-  limitControl.hidden = !displayLimited;
 }
 
 // Save settings
@@ -67,10 +55,9 @@ async function saveSettings() {
   try {
     const settings = {
       combineQuestionResponse: document.getElementById('combineQuestionResponse').checked,
-      displayMode: document.getElementById('displayAll').checked ? 'all' : 'limited',
-      maxQuestions: parseInt(document.getElementById('maxQuestions').value) || 10,
       themeMode: document.querySelector('input[name="themeMode"]:checked')?.value || 'auto',
       showPinButton: document.getElementById('showPinButton').checked,
+      showOutline: document.getElementById('showOutline').checked,
       showScrollLockButton: document.getElementById('showScrollLockButton').checked
     };
     
@@ -98,18 +85,6 @@ function scheduleAutoSave() {
   }, 250);
 }
 
-// Reset to defaults
-async function resetSettings() {
-  try {
-    await chrome.storage.sync.set(defaultSettings);
-    await loadSettings();
-    showStatus('Settings reset to defaults', 'success');
-  } catch (error) {
-    console.error('Error resetting settings:', error);
-    showStatus('Error resetting settings', 'error');
-  }
-}
-
 // Show status message
 function showStatus(message, type) {
   const statusMessage = document.getElementById('statusMessage');
@@ -125,32 +100,12 @@ function showStatus(message, type) {
 document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
 
-  // Reset button
-  document.getElementById('resetButton').addEventListener('click', resetSettings);
-  
-  // Display mode radio buttons
-  document.getElementById('displayAll').addEventListener('change', () => {
-    updateLimitControlVisibility();
-    scheduleAutoSave();
-  });
-  document.getElementById('displayLimited').addEventListener('change', () => {
-    updateLimitControlVisibility();
-    scheduleAutoSave();
-  });
-  
-  // Number input validation
-  document.getElementById('maxQuestions').addEventListener('input', (e) => {
-    const value = parseInt(e.target.value);
-    if (value < 1) e.target.value = 1;
-    if (value > 50) e.target.value = 50;
-    scheduleAutoSave();
-  });
-
   // Auto-save toggles
   document.querySelectorAll('input[name="themeMode"]').forEach((input) => {
     input.addEventListener('change', scheduleAutoSave);
   });
   document.getElementById('combineQuestionResponse').addEventListener('change', scheduleAutoSave);
   document.getElementById('showPinButton').addEventListener('change', scheduleAutoSave);
+  document.getElementById('showOutline').addEventListener('change', scheduleAutoSave);
   document.getElementById('showScrollLockButton').addEventListener('change', scheduleAutoSave);
 });

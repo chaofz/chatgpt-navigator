@@ -62,6 +62,21 @@
             <span class="switch-track"></span>
           </span>
         </label>
+      </section>
+
+      <section class="group">
+        <h2 class="group-title">Outline</h2>
+
+        <label class="row row-toggle" for="showOutline">
+          <div class="row-info">
+            <div class="row-label">Show Table of Contents</div>
+            <div class="row-help">Show the clickable list of conversation messages.</div>
+          </div>
+          <span class="switch">
+            <input type="checkbox" id="showOutline" checked>
+            <span class="switch-track"></span>
+          </span>
+        </label>
 
         <label class="row row-toggle" for="combineQuestionResponse">
           <div class="row-info">
@@ -73,37 +88,16 @@
             <span class="switch-track"></span>
           </span>
         </label>
-      </section>
 
-      <section class="group">
-        <h2 class="group-title">Outline</h2>
-        <div class="row row-stack">
+        <div class="row">
           <div class="row-info">
-            <div class="row-label">Show</div>
-            <div class="row-help">Limit the outline to the most recent questions.</div>
+            <div class="row-help">Note: ChatGPT already has a built-in outline navigator and partial rendering, so third-party tools may not work perfectly. Use them at your discretion.</div>
           </div>
-          <div class="segmented" role="radiogroup" aria-label="Outline display">
-            <label>
-              <input type="radio" name="displayMode" value="all" id="displayAll" checked>
-              <span>All</span>
-            </label>
-            <label>
-              <input type="radio" name="displayMode" value="limited" id="displayLimited">
-              <span>Limit</span>
-            </label>
-          </div>
-        </div>
-        <div class="row row-inline" id="limitControl" hidden>
-          <div class="row-info">
-            <div class="row-label">Max questions</div>
-          </div>
-          <input type="number" id="maxQuestions" min="1" max="50" value="10" class="number-input">
         </div>
       </section>
 
       <footer class="actions">
         <span id="statusMessage" class="status-message" role="status" aria-live="polite"></span>
-        <button id="resetButton" class="button">Reset to defaults</button>
       </footer>
     </main>
   </div>
