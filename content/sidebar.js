@@ -8,6 +8,7 @@ class ChatGPTNavigator {
     this.sidebar = null;
     this.outline = null;
     this.toggleButton = null;
+    this.lockButton = null;
     this.pinButton = null;
     this.backButton = null;
     this.pinnedScroll = null;
@@ -36,7 +37,8 @@ class ChatGPTNavigator {
       displayMode: 'all',
       maxQuestions: 10,
       themeMode: 'auto',
-      showPinBackButtons: true
+      showPinButton: true,
+      showScrollLockButton: true
     };
     this._themeObserver = null;
     this._themeMediaQuery = null;
@@ -79,7 +81,8 @@ class ChatGPTNavigator {
       displayMode: 'all',
       maxQuestions: 10,
       themeMode: 'auto',
-      showPinBackButtons: true,
+      showPinButton: true,
+      showScrollLockButton: true,
       scrollLockEnabled: true
     };
     try {
@@ -182,15 +185,15 @@ class ChatGPTNavigator {
 
     this.sidebar.innerHTML = `
       <div id="chatgpt-navigator-header">
-        <button type="button" id="chatgpt-navigator-pin-btn" class="chatgpt-navigator-header-btn" aria-label="Pin scroll position" title="Pin scroll position">
+        <button type="button" id="chatgpt-navigator-lock-btn" class="chatgpt-navigator-header-btn" aria-label="Toggle scroll lock" title="Toggle scroll lock">
           <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M19 23l-7-5-7 5V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+            <rect class="lock-body" x="4.5" y="11" width="15" height="12" rx="2"></rect>
+            <path d="M8 10V6a4 4 0 0 1 8 0v4"></path>
           </svg>
         </button>
-        <button type="button" id="chatgpt-navigator-back-btn" class="chatgpt-navigator-header-btn" aria-label="Back to pinned scroll position" title="Back to pinned position" disabled>
+        <button type="button" id="chatgpt-navigator-pin-btn" class="chatgpt-navigator-header-btn" aria-label="Pin or jump to scroll position" title="Pin scroll position">
           <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M9 5.5 4 10 9 14.5"/>
-            <path d="M4 10H14a2 2 0 0 1 2 2v7.5"/>
+            <path fill-rule="evenodd" d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z M15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path>
           </svg>
         </button>
         <button type="button" id="chatgpt-navigator-toggle-btn" class="chatgpt-navigator-header-btn" aria-label="Toggle sidebar">
@@ -204,25 +207,31 @@ class ChatGPTNavigator {
 
     document.body.appendChild(this.sidebar);
     this.outline = document.getElementById('chatgpt-navigator-outline');
+    this.lockButton = document.getElementById('chatgpt-navigator-lock-btn');
     this.pinButton = document.getElementById('chatgpt-navigator-pin-btn');
-    this.backButton = document.getElementById('chatgpt-navigator-back-btn');
     this.toggleButton = document.getElementById('chatgpt-navigator-toggle-btn');
     this.applyHeaderToolbarVisibility();
     this.updateScrollPinUI();
+    this.updateScrollLockUI();
   }
 
   /**
-   * Show or hide optional pin/back toolbar buttons from settings.
+   * Show or hide optional toolbar buttons from settings.
    */
   applyHeaderToolbarVisibility() {
-    const show = !!this.settings.showPinBackButtons;
-    if (this.pinButton) this.pinButton.hidden = !show;
-    if (this.backButton) this.backButton.hidden = !show;
+    const showPin = !!this.settings.showPinButton;
+    const showLock = !!this.settings.showScrollLockButton;
+
+    if (this.lockButton) this.lockButton.hidden = !showLock;
+    if (this.pinButton) this.pinButton.hidden = !showPin;
+
     if (this.sidebar) {
-      this.sidebar.classList.toggle('chatgpt-navigator-only-toggle', !show);
+      this.sidebar.classList.toggle('chatgpt-navigator-only-toggle', !showPin && !showLock);
     }
-    if (!show) this.pinnedScroll = null;
+
+    if (!showPin) this.pinnedScroll = null;
     this.updateScrollPinUI();
+    this.updateScrollLockUI();
   }
 
   /**
@@ -804,12 +813,12 @@ class ChatGPTNavigator {
     this.logInfo('Pinned scroll position:', this.pinnedScroll.scrollTop);
   }
 
-  restoreScrollPosition() {
+  restoreScrollPosition(instant = false) {
     if (!this.pinnedScroll) return;
 
     const container = this._resolvePinnedContainer();
     const targetTop = this.pinnedScroll.scrollTop;
-    const duration = 250;
+    const duration = instant ? 50 : 250;
     this._scrollLockBypass = true;
 
     const finish = () => {
@@ -861,7 +870,10 @@ class ChatGPTNavigator {
   }
 
   setScrollLock(enabled) {
-    if (enabled === this.scrollLockEnabled) return;
+    if (enabled === this.scrollLockEnabled) {
+      this.updateScrollLockUI();
+      return;
+    }
 
     this.scrollLockEnabled = enabled;
 
@@ -880,6 +892,13 @@ class ChatGPTNavigator {
       this._disableScrollIntoViewBlock();
       this.logInfo('Scroll lock disabled');
     }
+
+    this.updateScrollLockUI();
+  }
+
+  updateScrollLockUI() {
+    if (!this.lockButton) return;
+    this.lockButton.classList.toggle('active', !!this.scrollLockEnabled);
   }
 
   _markScrollLockUserIntent(duration = 1000) {
@@ -1164,27 +1183,45 @@ class ChatGPTNavigator {
   }
 
   updateScrollPinUI() {
-    if (!this.pinButton || !this.backButton) return;
+    if (!this.pinButton) return;
     const hasPin = this.pinnedScroll != null;
     this.pinButton.classList.toggle('pinned', hasPin);
-    this.backButton.disabled = !hasPin;
+    this.pinButton.title = hasPin ? 'Jump back to pinned position' : 'Pin scroll position';
+
+    // Update the SVG path for hole size
+    const path = this.pinButton.querySelector('path');
+    if (path) {
+      if (hasPin) {
+        // Large hole (radius 4) for filled/active state
+        path.setAttribute('d', 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z M16 10a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z');
+      } else {
+        // Small hole (radius 3) for outlined/inactive state
+        path.setAttribute('d', 'M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z M15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z');
+      }
+    }
   }
 
   /**
    * Attach event listeners
    */
   attachEventListeners() {
-    if (this.pinButton) {
-      this.pinButton.addEventListener('click', (e) => {
+    if (this.lockButton) {
+      this.lockButton.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.pinScrollPosition();
+        this.toggleScrollLock();
       });
     }
 
-    if (this.backButton) {
-      this.backButton.addEventListener('click', (e) => {
+    if (this.pinButton) {
+      this.pinButton.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.restoreScrollPosition();
+        if (this.pinnedScroll) {
+          this.restoreScrollPosition(true); // true for instant jump
+          this.pinnedScroll = null;
+          this.updateScrollPinUI();
+        } else {
+          this.pinScrollPosition();
+        }
       });
     }
 

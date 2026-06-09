@@ -38,11 +38,11 @@ jobs:
 
       - name: Build ZIP package
         run: |
-          $filePath = "ChatGPT-URL-Extension_v${{ steps.get_version.outputs.version }}.zip"
-          7z a $filePath images scripts manifest.json README.md readme_cn.md
+          $filePath = "ChatGPT-Navigator_v${{ steps.get_version.outputs.version }}.zip"
+          7z a $filePath icons content manifest.json README.md options.html options.js options.css
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.get_version.outputs.version }}
-          files: ./ChatGPT-URL-Extension_v${{ steps.get_version.outputs.version }}.zip
+          files: ./ChatGPT-Navigator_v${{ steps.get_version.outputs.version }}.zip

@@ -11,14 +11,14 @@
   let initTimer = null;
 
   // --- ChatGPT Toolkit Logic (URL hash parameters) ---
-  let toolkitDebug = true;
-  const ContentUtils = window.ChatGPTToolkitContentUtils;
+  let navigatorLogicDebug = true;
+  const ContentUtils = window.ChatGPTNavigatorContentUtils;
 
-  let toolkitPrompt = "";
-  let toolkitAutoSubmit = false;
+  let navigatorLogicPrompt = "";
+  let navigatorLogicAutoSubmit = false;
   let modelIntent = "keep";
-  let toolkitThink = false;
-  let toolkitThinkSpecified = false;
+  let navigatorLogicThink = false;
+  let navigatorLogicThinkSpecified = false;
   let extendedThink = false;
   let extendedThinkSpecified = false;
   let modelVerboseDebug = false;
@@ -29,18 +29,18 @@
   let modelPreferenceWaitLogTs = 0;
   const MAX_MODEL_PREFERENCE_ATTEMPTS = 200;
 
-  function toolkitDelay(ms) {
+  function navigatorLogicDelay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   function modelLog(...args) {
-    if (!toolkitDebug && !modelVerboseDebug) return;
-    console.log("[ChatGPTToolkit][model]", ...args);
+    if (!navigatorLogicDebug && !modelVerboseDebug) return;
+    console.log("[ChatGPTNavigator][model]", ...args);
   }
 
   function modelTrace(...args) {
     if (!modelVerboseDebug) return;
-    console.log("[ChatGPTToolkit][model][trace]", ...args);
+    console.log("[ChatGPTNavigator][model][trace]", ...args);
   }
 
   function clearHash() {
@@ -56,16 +56,16 @@
     if (!hash) return false;
 
     if (!ContentUtils) {
-      console.error("[ChatGPTToolkit] Missing ContentUtils; check manifest.json script order.");
+      console.error("[ChatGPTNavigator] Missing ContentUtils; check manifest.json script order.");
       return false;
     }
 
-    const parsed = ContentUtils.parseToolkitHash(hash, location.search);
-    toolkitPrompt = parsed.prompt || "";
-    toolkitAutoSubmit = !!parsed.autoSubmit;
+    const parsed = ContentUtils.parseNavigatorHash(hash, location.search);
+    navigatorLogicPrompt = parsed.prompt || "";
+    navigatorLogicAutoSubmit = !!parsed.autoSubmit;
     modelIntent = parsed.modelIntent || "keep";
-    toolkitThink = !!parsed.think;
-    toolkitThinkSpecified = !!parsed.thinkSpecified;
+    navigatorLogicThink = !!parsed.think;
+    navigatorLogicThinkSpecified = !!parsed.thinkSpecified;
     extendedThink = !!parsed.extendedThink;
     extendedThinkSpecified = !!parsed.extendedThinkSpecified;
     modelVerboseDebug = !!parsed.debugModel;
@@ -76,18 +76,18 @@
     modelPreferenceAttempts = 0;
     modelPreferenceWaitLogTs = 0;
 
-    if (toolkitDebug) console.log("hash: ", hash);
-    if (toolkitDebug) console.log("prompt: ", toolkitPrompt);
-    if (toolkitDebug) console.log("autoSubmit: ", toolkitAutoSubmit);
+    if (navigatorLogicDebug) console.log("hash: ", hash);
+    if (navigatorLogicDebug) console.log("prompt: ", navigatorLogicPrompt);
+    if (navigatorLogicDebug) console.log("autoSubmit: ", navigatorLogicAutoSubmit);
     modelLog("intent:", modelIntent, {
-      toolkitThink,
-      toolkitThinkSpecified,
+      navigatorLogicThink,
+      navigatorLogicThinkSpecified,
       extendedThink,
       extendedThinkSpecified,
       modelVerboseDebug,
     });
 
-    return !!toolkitPrompt || modelPreferenceRequired;
+    return !!navigatorLogicPrompt || modelPreferenceRequired;
   }
 
   function fillContentEditableWithParagraphs(target, text) {
@@ -191,7 +191,7 @@
     const attemptOpen = async () => {
       switcher.focus();
       switcher.click();
-      await toolkitDelay(180);
+      await navigatorLogicDelay(180);
       if (isModelMenuOpenByButtonState(switcher)) return true;
       if (collectVisibleMenuActionElements().length > 0) return true;
 
@@ -199,7 +199,7 @@
       switcher.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true }));
       switcher.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }));
       switcher.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", bubbles: true, cancelable: true }));
-      await toolkitDelay(180);
+      await navigatorLogicDelay(180);
 
       return isModelMenuOpenByButtonState(switcher) || collectVisibleMenuActionElements().length > 0;
     };
@@ -222,7 +222,7 @@
     for (let i = 0; i < 8; i++) {
       candidates = collectVisibleMenuActionElements();
       if (candidates.length > 0) break;
-      await toolkitDelay(120);
+      await navigatorLogicDelay(120);
     }
     if (candidates.length === 0) {
       modelLog("model menu options not found");
@@ -237,7 +237,7 @@
     }
 
     target.click();
-    await toolkitDelay(180);
+    await navigatorLogicDelay(180);
     const currentMode = getCurrentChatGPTModelMode();
     return targetMode === "instant" ? currentMode === "instant" : currentMode === "thinking";
   }
@@ -279,7 +279,7 @@
 
     if (pill.getAttribute("aria-expanded") !== "true") {
       pill.click();
-      await toolkitDelay(120);
+      await navigatorLogicDelay(120);
     }
 
     let candidates = [];
@@ -296,7 +296,7 @@
     for (let i = 0; i < 8 && candidates.length === 0; i++) {
       candidates = collectVisibleMenuActionElements();
       if (candidates.length > 0) break;
-      await toolkitDelay(120);
+      await navigatorLogicDelay(120);
     }
     if (candidates.length === 0) {
       modelLog("thinking strength menu options not found");
@@ -320,7 +320,7 @@
     }
 
     target.click();
-    await toolkitDelay(180);
+    await navigatorLogicDelay(180);
     return getThinkingStrengthMode() === targetStrength;
   }
 
@@ -380,7 +380,7 @@
   }
 
   function maybeAutoSubmitChatGPT() {
-    if (!toolkitAutoSubmit) return;
+    if (!navigatorLogicAutoSubmit) return;
     if (modelPreferenceRequired && !modelPreferenceDone) {
       const now = Date.now();
       if (now - modelPreferenceWaitLogTs > 1000) {
@@ -392,9 +392,9 @@
 
     const sendButton = getSubmitButton();
     if (sendButton && !sendButton.disabled) {
-      if (toolkitDebug) console.log("auto submit clicked");
+      if (navigatorLogicDebug) console.log("auto submit clicked");
       sendButton.click();
-      toolkitAutoSubmit = false;
+      navigatorLogicAutoSubmit = false;
     }
   }
 
@@ -406,8 +406,8 @@
       const editor = document.getElementById("prompt-textarea");
       if (!editor) return;
 
-      if (toolkitPrompt) {
-        setChatGPTPromptEditor(editor, toolkitPrompt);
+      if (navigatorLogicPrompt) {
+        setChatGPTPromptEditor(editor, navigatorLogicPrompt);
       }
 
       clearHash();

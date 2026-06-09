@@ -136,7 +136,7 @@
      * - `flexiblePromptDetection(hash)` can override `URLSearchParams.get('prompt')` even when hash is ill-formed.
      * - If `prompt` looks like Base64Unicode, we decode it *after* flexible prompt parsing, and we do not re-normalize.
      */
-    function parseToolkitHash(hash, locationSearch) {
+    function parseNavigatorHash(hash, locationSearch) {
         const qs = new URLSearchParams(hash);
 
         let prompt = qs.get("prompt");
@@ -182,12 +182,12 @@
     }
 
     const root = typeof globalThis !== "undefined" ? globalThis : window;
-    root.ChatGPTToolkitContentUtils = {
+    root.ChatGPTNavigatorContentUtils = {
         b64EncodeUnicode,
         b64DecodeUnicode,
         isBase64Unicode,
         getUriComponent,
         flexiblePromptDetection,
-        parseToolkitHash,
+        parseNavigatorHash,
     };
 })();

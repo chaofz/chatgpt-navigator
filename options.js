@@ -8,7 +8,8 @@ const defaultSettings = {
   displayMode: 'all',
   maxQuestions: 10,
   themeMode: 'auto',
-  showPinBackButtons: true,
+  showPinButton: true,
+  showScrollLockButton: true,
   scrollLockEnabled: true
 };
 
@@ -27,8 +28,8 @@ async function loadSettings() {
     
     // Set checkboxes
     document.getElementById('combineQuestionResponse').checked = result.combineQuestionResponse || false;
-    document.getElementById('showPinBackButtons').checked = result.showPinBackButtons === true;
-    document.getElementById('scrollLockEnabled').checked = result.scrollLockEnabled === true;
+    document.getElementById('showPinButton').checked = result.showPinButton === true;
+    document.getElementById('showScrollLockButton').checked = result.showScrollLockButton === true;
 
     const themeMode = normalizeThemeMode(result);
     document.getElementById('themeAuto').checked = themeMode === 'auto';
@@ -69,8 +70,8 @@ async function saveSettings() {
       displayMode: document.getElementById('displayAll').checked ? 'all' : 'limited',
       maxQuestions: parseInt(document.getElementById('maxQuestions').value) || 10,
       themeMode: document.querySelector('input[name="themeMode"]:checked')?.value || 'auto',
-      showPinBackButtons: document.getElementById('showPinBackButtons').checked,
-      scrollLockEnabled: document.getElementById('scrollLockEnabled').checked
+      showPinButton: document.getElementById('showPinButton').checked,
+      showScrollLockButton: document.getElementById('showScrollLockButton').checked
     };
     
     await chrome.storage.sync.set(settings);
@@ -150,6 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     input.addEventListener('change', scheduleAutoSave);
   });
   document.getElementById('combineQuestionResponse').addEventListener('change', scheduleAutoSave);
-  document.getElementById('showPinBackButtons').addEventListener('change', scheduleAutoSave);
-  document.getElementById('scrollLockEnabled').addEventListener('change', scheduleAutoSave);
+  document.getElementById('showPinButton').addEventListener('change', scheduleAutoSave);
+  document.getElementById('showScrollLockButton').addEventListener('change', scheduleAutoSave);
 });
