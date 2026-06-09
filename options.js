@@ -18,14 +18,18 @@ function normalizeThemeMode(settings) {
     : 'auto';
   
   // Apply theme to options page body
-  document.body.classList.remove('theme-light', 'theme-dark');
-  if (mode === 'light') {
-    document.body.classList.add('theme-light');
-  } else if (mode === 'dark') {
-    document.body.classList.add('theme-dark');
-  }
+  updateBodyTheme(mode);
   
   return mode;
+}
+
+function updateBodyTheme(mode) {
+  document.documentElement.classList.remove('theme-light', 'theme-dark');
+  if (mode === 'light') {
+    document.documentElement.classList.add('theme-light');
+  } else if (mode === 'dark') {
+    document.documentElement.classList.add('theme-dark');
+  }
 }
 let autoSaveTimer = null;
 
@@ -102,7 +106,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Auto-save toggles
   document.querySelectorAll('input[name="themeMode"]').forEach((input) => {
-    input.addEventListener('change', scheduleAutoSave);
+    input.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        updateBodyTheme(e.target.value);
+      }
+      scheduleAutoSave();
+    });
   });
   document.getElementById('combineQuestionResponse').addEventListener('change', scheduleAutoSave);
   document.getElementById('showPinButton').addEventListener('change', scheduleAutoSave);

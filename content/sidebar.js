@@ -228,7 +228,7 @@ class ChatGPTNavigator {
 
     if (this.sidebar) {
       this.sidebar.classList.toggle('chatgpt-navigator-only-toggle', !showPin && !showLock);
-      this.sidebar.classList.toggle('chatgpt-navigator-vertical-only', !showOutline);
+      this.sidebar.classList.toggle('chatgpt-navigator-minimal', !showOutline);
     }
 
     if (!showPin) this.pinnedScroll = null;
