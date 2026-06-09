@@ -1,0 +1,48 @@
+name: Release Extension Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish-release:
+    runs-on: windows-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Read version from manifest
+        id: get_version
+        run: |
+          $version = (Get-Content manifest.json | ConvertFrom-Json).version
+          echo "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          name: Release v${{ steps.get_version.outputs.version }}
+          draft: false
+          prerelease: false
+
+      - name: Build ZIP package
+        run: |
+          $filePath = "ChatGPT-URL-Extension_v${{ steps.get_version.outputs.version }}.zip"
+          7z a $filePath images scripts manifest.json README.md readme_cn.md
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          files: ./ChatGPT-URL-Extension_v${{ steps.get_version.outputs.version }}.zip

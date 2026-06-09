@@ -12,6 +12,21 @@ A Chrome extension that adds a navigation sidebar to ChatGPT conversations, allo
 - **Toggle visibility** - Show/hide the sidebar with a button
 - **Scroll lock** - Lock the viewport so new responses do not auto-scroll you to the bottom (leftmost header button)
 - **Scroll pin & back** - Pin scroll position and jump back (can hide in options)
+- **URL Hash Parameters** - Control ChatGPT via URL (e.g., auto-fill prompt, auto-submit, model switching)
+
+## URL Hash Parameters
+
+Use URL hash parameters to drive ChatGPT directly from your browser address bar.
+
+| Parameter | Values | Description |
+|---|---|---|
+| `prompt` | any string | Prompt text to fill into ChatGPT |
+| `autoSubmit` | `1` / `true` | Auto-click send after fill/model setup |
+| `think` | `1` / `true` / `0` / `false` | Thinking model preference flag |
+| `extendedthink` | `1` / `true` / `0` / `false` | Extended thinking preference flag |
+| `debugModel` | `1` / `true` | Print model workflow logs in console |
+
+Example: `https://chatgpt.com/#autoSubmit=1&extendedthink=1&prompt=Hello`
 
 ## Installation
 
