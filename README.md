@@ -1,112 +1,46 @@
-# ChatGPT Navigator
+# ChatGPT Navigator: Sidebar & Table of Contents
 
-A Chrome extension that adds a navigation sidebar to ChatGPT conversations, allowing you to quickly jump to any question or response in your chat.
+Elevate your ChatGPT productivity with a professional navigation sidebar. ChatGPT Navigator automatically generates a Table of Contents for your conversations, allowing you to jump between questions and responses instantly.
 
-## Features
+## Key Features
 
-- **Right-side navigation sidebar** - Fixed position sidebar that stays visible while scrolling
-- **Nested outline structure** - Questions with responses nested underneath
-- **Quick navigation** - Click any outline item to smoothly scroll to that message
-- **Auto-updates** - Outline automatically refreshes as new messages are added
-- **Adaptive appearance** - Auto-match ChatGPT light/dark theme, or force light or dark sidebar in options
-- **Toggle visibility** - Show/hide the sidebar with a button
-- **Scroll lock** - Lock the viewport so new responses do not auto-scroll you to the bottom (leftmost header button)
-- **Scroll pin & back** - Pin scroll position and jump back (can hide in options)
-- **URL Hash Parameters** - Control ChatGPT via URL (e.g., auto-fill prompt, auto-submit, model switching)
+- **🚀 Navigation Sidebar** - A fixed, floating sidebar that keeps your conversation structure always accessible.
+- **📑 Automatic Outline (ToC)** - Automatically detects user questions and assistant responses to build a clickable Table of Contents.
+- **🔒 Smart Scroll Lock** - Stop the page from auto-scrolling to the bottom when ChatGPT is generating a long response. Perfect for focused reading.
+- **📍 Scroll Pinning** - "Pin" a specific part of the conversation and return to it instantly with a single click.
+- **⚡ URL Hash Automation** - Drive ChatGPT directly from your address bar. Auto-fill prompts, auto-submit, and force specific models (Thinking/Instant) using URL parameters.
+- **🎨 Adaptive Design** - Seamlessly matches ChatGPT's light and dark themes. Fully customizable in options.
+- **⌨️ Keyboard Shortcuts** - Fast navigation with `Option + Arrow` keys and `Cmd/Ctrl + Enter` for submission.
 
-## URL Hash Parameters
+## Power User: URL Parameters
 
-Use URL hash parameters to drive ChatGPT directly from your browser address bar.
+Configure custom search engines in your browser to launch ChatGPT tasks instantly.
 
 | Parameter | Values | Description |
 |---|---|---|
-| `prompt` | any string | Prompt text to fill into ChatGPT |
-| `autoSubmit` | `1` / `true` | Auto-click send after fill/model setup |
-| `think` | `1` / `true` / `0` / `false` | Thinking model preference flag |
-| `extendedthink` | `1` / `true` / `0` / `false` | Extended thinking preference flag |
-| `debugModel` | `1` / `true` | Print model workflow logs in console |
+| `prompt` | any string | Text to auto-fill into the composer |
+| `autoSubmit` | `1` / `true` | Automatically click send after fill |
+| `think` | `1` / `0` | Force Thinking model (1) or Instant model (0) |
+| `extendedthink`| `1` / `0` | Enable/Disable Extended Thinking mode |
 
-Example: `https://chatgpt.com/#autoSubmit=1&extendedthink=1&prompt=Hello`
+**Example**: `https://chatgpt.com/#autoSubmit=1&think=1&prompt=Explain+quantum+physics`
 
 ## Installation
 
-### From Source
+### From Source (Developer Mode)
 
-1. Clone or download this repository
-2. Open Chrome and navigate to `chrome://extensions/`
-3. Enable "Developer mode" (toggle in the top right)
-4. Click "Load unpacked"
-5. Select the `chatgpt-navigator` folder
-6. The extension should now be active on ChatGPT pages
+1. Download or clone this repository.
+2. Open Chrome and go to `chrome://extensions/`.
+3. Enable **"Developer mode"** (top right).
+4. Click **"Load unpacked"** and select the `chatgpt-navigator` folder.
 
-## Usage
+## Privacy & Security
 
-1. Navigate to [ChatGPT](https://chat.openai.com)
-2. Start or open a conversation
-3. The navigation sidebar will appear on the right side of the page
-4. Click any question or response in the outline to jump to that message
-5. Click the lock button (left) to freeze scroll while reading; new responses will not pull you to the bottom until you unlock
-6. Use the arrow button to collapse or expand the sidebar
-7. Use pin and back to save and restore scroll position (disable in options under Toolbar if you prefer a minimal bar)
-8. Open extension options to set sidebar appearance: match ChatGPT automatically (default), or always light or dark
-
-## How It Works
-
-The extension:
-- Observes the ChatGPT page DOM to detect messages
-- Identifies user questions and assistant responses
-- Builds a nested outline structure
-- Provides smooth scrolling navigation when clicking outline items
-- Automatically updates as new messages are added to the conversation
-
-## File Structure
-
-```
-chatgpt-navigator/
-├── manifest.json          # Extension manifest (Manifest V3)
-├── options.html           # Settings page (appearance, outline behavior)
-├── options.js
-├── options.css
-├── content/
-│   ├── content.js         # Main content script entry point
-│   ├── sidebar.js         # Sidebar logic and ChatGPTNavigator class
-│   └── sidebar.css        # Sidebar styling
-└── README.md              # This file
-```
-
-## Development
-
-The extension uses:
-- **Manifest V3** - Latest Chrome extension format
-- **Content Scripts** - Injected into ChatGPT pages
-- **MutationObserver** - Watches for DOM changes to update outline
-- **Vanilla JavaScript** - No external dependencies
-
-## Browser Compatibility
-
-- Chrome (Manifest V3 support required)
-- Other Chromium-based browsers (Edge, Brave, etc.)
-
-## Notes
-
-- The extension works by analyzing the ChatGPT DOM structure
-- If ChatGPT updates their UI significantly, the message detection may need adjustment
-- The extension activates on both `chat.openai.com` and `chatgpt.com` domains
-
-## Debugging
-
-Errors are logged to the browser console. To view them:
-
-1. Open ChatGPT in Chrome
-2. Press `F12` or right-click and select "Inspect"
-3. Go to the "Console" tab
-4. Look for messages prefixed with `[ChatGPT Navigator]`
-
-Common issues:
-- **"No messages found"**: ChatGPT's DOM structure may have changed. Check the console for detailed error messages.
-- **Sidebar not appearing**: Check the console for initialization errors.
-- **Messages not updating**: The DOM observer may not be detecting changes. Check console for observer-related errors.
+- **No Data Collection**: Your conversation data never leaves your browser.
+- **No External Dependencies**: Built with 100% vanilla JavaScript.
+- **Manifest V3**: Follows the latest security standards for Chrome extensions.
 
 ## License
 
 MIT
+
