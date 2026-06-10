@@ -183,19 +183,19 @@ class ChatGPTNavigator {
 
     this.sidebar.innerHTML = `
       <div id="chatgpt-navigator-header">
-        <button type="button" id="chatgpt-navigator-lock-btn" class="chatgpt-navigator-header-btn" aria-label="Toggle scroll lock" title="Toggle scroll lock">
+        <button type="button" id="chatgpt-navigator-lock-btn" class="chatgpt-navigator-header-btn" aria-label="Toggle scroll lock" title="Scroll Lock">
           <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect class="lock-body" x="4.5" y="11" width="15" height="12" rx="2"></rect>
             <path class="lock-shackle-unlocked" d="M8 5V6a4 4 0 0 1 8 0v5"></path>
             <path class="lock-shackle-locked" d="M8 11V6a4 4 0 0 1 8 0v5"></path>
           </svg>
         </button>
-        <button type="button" id="chatgpt-navigator-pin-btn" class="chatgpt-navigator-header-btn" aria-label="Pin or jump to scroll position" title="Pin scroll position">
+        <button type="button" id="chatgpt-navigator-pin-btn" class="chatgpt-navigator-header-btn" aria-label="Pin or jump to scroll position" title="Pin Position">
           <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path fill-rule="evenodd" d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z M15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path>
           </svg>
         </button>
-        <button type="button" id="chatgpt-navigator-toggle-btn" class="chatgpt-navigator-header-btn" aria-label="Toggle sidebar">
+        <button type="button" id="chatgpt-navigator-toggle-btn" class="chatgpt-navigator-header-btn" aria-label="Toggle sidebar" title="Collapse">
           <svg id="chatgpt-navigator-toggle-icon" class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M15 18l-6-6 6-6"/>
           </svg>
@@ -903,7 +903,9 @@ class ChatGPTNavigator {
 
   updateScrollLockUI() {
     if (!this.lockButton) return;
-    this.lockButton.classList.toggle('active', !!this.scrollLockEnabled);
+    const enabled = !!this.scrollLockEnabled;
+    this.lockButton.classList.toggle('active', enabled);
+    this.lockButton.title = enabled ? 'Scroll Lock (On)' : 'Scroll Lock (Off)';
   }
 
   _markScrollLockUserIntent(duration = 1000) {
@@ -1191,7 +1193,7 @@ class ChatGPTNavigator {
     if (!this.pinButton) return;
     const hasPin = this.pinnedScroll != null;
     this.pinButton.classList.toggle('pinned', hasPin);
-    this.pinButton.title = hasPin ? 'Jump back to pinned position' : 'Pin scroll position';
+    this.pinButton.title = hasPin ? 'Jump to Pinned' : 'Pin Position';
 
     // Update the SVG path for hole size
     const path = this.pinButton.querySelector('path');
@@ -1325,6 +1327,9 @@ class ChatGPTNavigator {
         this.sidebar.classList.remove('collapsed');
       } else {
         this.sidebar.classList.add('collapsed');
+      }
+      if (this.toggleButton) {
+        this.toggleButton.title = this.isExpanded ? 'Collapse' : 'Expand';
       }
       if (this.outlineData.length > 0) this.renderOutline();
     }
