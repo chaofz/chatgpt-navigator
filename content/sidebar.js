@@ -186,7 +186,8 @@ class ChatGPTNavigator {
         <button type="button" id="chatgpt-navigator-lock-btn" class="chatgpt-navigator-header-btn" aria-label="Toggle scroll lock" title="Toggle scroll lock">
           <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <rect class="lock-body" x="4.5" y="11" width="15" height="12" rx="2"></rect>
-            <path d="M8 10V6a4 4 0 0 1 8 0v4"></path>
+            <path class="lock-shackle-unlocked" d="M8 5V6a4 4 0 0 1 8 0v5"></path>
+            <path class="lock-shackle-locked" d="M8 11V6a4 4 0 0 1 8 0v5"></path>
           </svg>
         </button>
         <button type="button" id="chatgpt-navigator-pin-btn" class="chatgpt-navigator-header-btn" aria-label="Pin or jump to scroll position" title="Pin scroll position">

@@ -236,6 +236,18 @@
   fill: currentColor;
 }
 
+#chatgpt-navigator-lock-btn .lock-shackle-locked {
+  display: none;
+}
+
+#chatgpt-navigator-lock-btn.active .lock-shackle-unlocked {
+  display: none;
+}
+
+#chatgpt-navigator-lock-btn.active .lock-shackle-locked {
+  display: block;
+}
+
 /* Pin: fill body only, keep color muted */
 #chatgpt-navigator-pin-btn.pinned .chatgpt-navigator-header-icon {
   fill: currentColor;
