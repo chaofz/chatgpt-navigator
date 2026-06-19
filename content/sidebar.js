@@ -190,9 +190,15 @@ class ChatGPTNavigator {
             <path class="lock-shackle-locked" d="M8 11V6a4 4 0 0 1 8 0v5"></path>
           </svg>
         </button>
-        <button type="button" id="chatgpt-navigator-pin-btn" class="chatgpt-navigator-header-btn" aria-label="Pin or jump to scroll position" title="Pin Position">
+        <button type="button" id="chatgpt-navigator-pin-btn" class="chatgpt-navigator-header-btn" aria-label="Pin scroll position" title="Pin Position">
           <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path fill-rule="evenodd" d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z M15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"></path>
+          </svg>
+        </button>
+        <button type="button" id="chatgpt-navigator-back-btn" class="chatgpt-navigator-header-btn" aria-label="Go back to pinned position" title="Go Back" disabled>
+          <svg class="chatgpt-navigator-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 5.5 4 10 9 14.5"/>
+            <path d="M4 10H14a2 2 0 0 1 2 2v7.5"/>
           </svg>
         </button>
         <button type="button" id="chatgpt-navigator-toggle-btn" class="chatgpt-navigator-header-btn" aria-label="Toggle sidebar" title="Collapse">
@@ -208,6 +214,7 @@ class ChatGPTNavigator {
     this.outline = document.getElementById('chatgpt-navigator-outline');
     this.lockButton = document.getElementById('chatgpt-navigator-lock-btn');
     this.pinButton = document.getElementById('chatgpt-navigator-pin-btn');
+    this.backButton = document.getElementById('chatgpt-navigator-back-btn');
     this.toggleButton = document.getElementById('chatgpt-navigator-toggle-btn');
     this.applyHeaderToolbarVisibility();
     this.updateScrollPinUI();
@@ -224,6 +231,7 @@ class ChatGPTNavigator {
 
     if (this.lockButton) this.lockButton.hidden = !showLock;
     if (this.pinButton) this.pinButton.hidden = !showPin;
+    if (this.backButton) this.backButton.hidden = !showPin;
     if (this.toggleButton) this.toggleButton.hidden = !showOutline;
     if (this.outline) this.outline.hidden = !showOutline;
 
@@ -1193,7 +1201,11 @@ class ChatGPTNavigator {
     if (!this.pinButton) return;
     const hasPin = this.pinnedScroll != null;
     this.pinButton.classList.toggle('pinned', hasPin);
-    this.pinButton.title = hasPin ? 'Jump to Pinned' : 'Pin Position';
+    this.pinButton.title = hasPin ? 'Pinned Position' : 'Pin Position';
+
+    if (this.backButton) {
+      this.backButton.disabled = !hasPin;
+    }
 
     // Update the SVG path for hole size
     const path = this.pinButton.querySelector('path');
@@ -1223,11 +1235,38 @@ class ChatGPTNavigator {
       this.pinButton.addEventListener('click', (e) => {
         e.stopPropagation();
         if (this.pinnedScroll) {
-          this.restoreScrollPosition(true); // true for instant jump
-          this.pinnedScroll = null;
-          this.updateScrollPinUI();
+          const current = this._getCurrentScrollState();
+          const isSamePosition = Math.abs(current.scrollTop - this.pinnedScroll.scrollTop) < 5;
+          if (isSamePosition) {
+            this.pinnedScroll = null;
+            this.updateScrollPinUI();
+            this.logInfo('Cleared pinned scroll position');
+          } else {
+            this.pinScrollPosition();
+          }
         } else {
           this.pinScrollPosition();
+        }
+      });
+    }
+
+    if (this.backButton) {
+      this.backButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.pinnedScroll) {
+          const current = this._getCurrentScrollState();
+          const isAtPinnedPosition = Math.abs(current.scrollTop - this.pinnedScroll.scrollTop) < 5;
+          const now = Date.now();
+          const isDoubleClick = this._lastBackClickTime && (now - this._lastBackClickTime < 500);
+          this._lastBackClickTime = now;
+
+          if (isAtPinnedPosition || isDoubleClick) {
+            this.pinnedScroll = null;
+            this.updateScrollPinUI();
+            this.logInfo('Cleared pinned scroll position');
+          } else {
+            this.restoreScrollPosition(false); // smooth scroll to pinned position
+          }
         }
       });
     }
