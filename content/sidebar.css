@@ -111,7 +111,7 @@
 }
 
 #chatgpt-navigator-outline {
-  padding: 4px 0;
+  padding: 0 0 4px;
   list-style: none;
   margin: 0;
   overflow-y: auto;
