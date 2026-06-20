@@ -1,16 +1,26 @@
-# System files
+# OS files
 .DS_Store
 Thumbs.db
-*.log
+*.local
 
-# Cursor Editor
-.cursor/
-.cursorrules
-
-# VS Code
+# IDEs and Editors
 .vscode/
-.history/
-*.code-workspace
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# GitHub
-.github/
+# Packaging & Builds
+*.zip
+*.crx
+dist/
+build/
+
+# Python cache (from our helper scripts)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.ipynb_checkpoints/
