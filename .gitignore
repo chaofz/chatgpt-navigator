@@ -1,0 +1,16 @@
+# System files
+.DS_Store
+Thumbs.db
+*.log
+
+# Cursor Editor
+.cursor/
+.cursorrules
+
+# VS Code
+.vscode/
+.history/
+*.code-workspace
+
+# GitHub
+.github/
