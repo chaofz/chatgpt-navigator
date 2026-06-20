@@ -21,6 +21,7 @@ Thumbs.db
 *.crx
 dist/
 build/
+promo_tile_*.png
 
 # Python cache (from our helper scripts)
 __pycache__/
