@@ -6,11 +6,15 @@ Thumbs.db
 # IDEs and Editors
 .vscode/
 .idea/
+.cursor/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+
+# Version Control & Platform
+.github/
 
 # Packaging & Builds
 *.zip
