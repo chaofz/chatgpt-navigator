@@ -1,8 +1,8 @@
-# Privacy Policy for Navigator for ChatGPT
+# Privacy Policy for ChatGPT Navigator
 
 **Last Updated:** June 20, 2026
 
-Your privacy is extremely important to us. This Privacy Policy explains how **Navigator for ChatGPT** (the "Extension") accesses and processes data.
+Your privacy is extremely important to us. This Privacy Policy explains how **ChatGPT Navigator** (the "Extension") accesses and processes data.
 
 ---
 
