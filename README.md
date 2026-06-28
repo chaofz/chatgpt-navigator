@@ -14,14 +14,32 @@ Elevate your ChatGPT productivity with a professional navigation sidebar. ChatGP
 
 ## Power User: URL Parameters
 
-Configure custom search engines in your browser to launch ChatGPT tasks instantly.
+Configure custom search engines in your browser to launch ChatGPT tasks instantly. The extension is injected automatically on all ChatGPT pages — no icon click required.
+
+### Simple format (recommended)
+
+Put the prompt in the query string and add `#auto_submit` as the hash:
+
+```
+https://chatgpt.com/?prompt=YOUR_URL_ENCODED_PROMPT#auto_submit
+```
+
+**Example**: `https://chatgpt.com/?prompt=Explain+quantum+physics#auto_submit`
+
+### Advanced format (hash-based)
+
+All parameters go in the URL hash for full control over model selection:
+
+```
+https://chatgpt.com/#prompt=YOUR_PROMPT&autoSubmit=1&think=1
+```
 
 | Parameter | Values | Description |
 |---|---|---|
 | `prompt` | any string | Text to auto-fill into the composer |
 | `autoSubmit` | `1` / `true` | Automatically click send after fill |
-| `think` | `1` / `0` | Force Thinking model (1) or Instant model (0) |
-| `extendedthink`| `1` / `0` | Enable/Disable Extended Thinking mode |
+| `think` | `1` / `0` | Force Thinking model (`1`) or Instant model (`0`) |
+| `extendedthink` | `1` / `0` | Enable/Disable Extended Thinking mode |
 
 **Example**: `https://chatgpt.com/#autoSubmit=1&think=1&prompt=Explain+quantum+physics`
 

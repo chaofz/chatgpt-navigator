@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Navigator",
+  "name": "ChatGPT Navigator Pro",
   "version": "1.0.0",
   "description": "Enhance your ChatGPT experience with a navigation sidebar supporting automatic outline, and scroll pin and lock.",
   "icons": {
@@ -15,6 +15,13 @@
     "scripting"
   ],
   "action": {},
+  "content_scripts": [
+    {
+      "matches": ["*://chatgpt.com/*", "*://chat.openai.com/*"],
+      "js": ["content/content-utils.js", "content/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "background": {
     "service_worker": "background.js"
   },

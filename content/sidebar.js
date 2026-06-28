@@ -1468,3 +1468,7 @@ class ChatGPTNavigator {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = ChatGPTNavigator;
 }
+
+// Signal to content.js that the sidebar class is now available (handles the case
+// where content.js was auto-injected on page load before the icon was clicked).
+document.dispatchEvent(new Event('__chatgptNavigatorSidebarLoaded'));

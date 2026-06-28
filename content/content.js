@@ -6,9 +6,14 @@
 (function () {
   'use strict';
 
+  if (window.__chatgptNavigatorContentLoaded) return;
+  window.__chatgptNavigatorContentLoaded = true;
+
   const DEBUG = false;
   let navigatorInstance = null;
   let initTimer = null;
+  let initRetries = 0;
+  const MAX_INIT_RETRIES = 60; // 6 s — gives up gracefully if sidebar.js wasn't injected
 
   // --- ChatGPT Toolkit Logic (URL hash parameters) ---
   let navigatorLogicDebug = true;
@@ -87,7 +92,7 @@
       modelVerboseDebug,
     });
 
-    return !!navigatorLogicPrompt || modelPreferenceRequired;
+    return !!navigatorLogicPrompt || modelPreferenceRequired || navigatorLogicAutoSubmit;
   }
 
   function fillContentEditableWithParagraphs(target, text) {
@@ -436,9 +441,10 @@
       return;
     }
 
-    // Wait for ChatGPTNavigator class to be available
+    // Wait for ChatGPTNavigator class to be available (injected by sidebar.js on icon click)
     if (typeof ChatGPTNavigator === 'undefined') {
-      // Retry after a short delay
+      if (initRetries >= MAX_INIT_RETRIES) return;
+      initRetries++;
       if (initTimer) clearTimeout(initTimer);
       initTimer = setTimeout(init, 100);
       return;
@@ -556,12 +562,12 @@
   function getSubmitButton() {
     // Look for the send/submit button
     const submitSelectors = [
+      '#composer-submit-button',
       '[data-testid="send-button"]',
+      'button[aria-label="Send prompt"]',
       'button[aria-label*="Send"]',
       'button[aria-label*="submit"]',
-      'button:has(svg [d*="M15.1,12.1L12.9,14.3"])', // Example path for send icon
       'form button[type="submit"]',
-      'button.absolute.bottom-1.5.right-2' // Common ChatGPT positioning
     ];
 
     for (const selector of submitSelectors) {
@@ -605,5 +611,11 @@
     await maybeApplyChatGPTModelPreference();
     maybeAutoSubmitChatGPT();
   }, 60);
+
+  // When sidebar.js is injected later (icon click), re-attempt navigator init.
+  document.addEventListener('__chatgptNavigatorSidebarLoaded', () => {
+    initRetries = 0;
+    startInit();
+  });
 
 })();

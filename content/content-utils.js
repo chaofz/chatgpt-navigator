@@ -1,6 +1,8 @@
 (function () {
     "use strict";
 
+    if (window.ChatGPTNavigatorContentUtils) return;
+
     /**
      * Base64 helpers for browser content script.
      */
@@ -140,7 +142,14 @@
         const qs = new URLSearchParams(hash);
 
         let prompt = qs.get("prompt");
-        const autoSubmit = qs.get("autoSubmit") === "1" || qs.get("autoSubmit") === "true";
+        // Support both #auto_submit (bare hash) and #autoSubmit=1 (keyed param)
+        const autoSubmit = hash === "auto_submit" || qs.get("autoSubmit") === "1" || qs.get("autoSubmit") === "true";
+
+        // Read prompt from query string when not present in hash (e.g. ?prompt=...#auto_submit)
+        if (!prompt && locationSearch) {
+            const searchQs = new URLSearchParams(locationSearch);
+            prompt = searchQs.get("prompt") || null;
+        }
         const thinkSpecified = qs.has("think");
         const extendedThinkSpecified = qs.has("extendedthink");
         const think = thinkSpecified && (qs.get("think") === "1" || (qs.get("think") || "").toLowerCase() === "true");
